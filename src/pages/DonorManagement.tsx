@@ -1,39 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
-import { getDonors, saveDonors, getCurrentYear, Donor } from "@/lib/store";
+import { getDonors, saveDonors, Donor, DONATION_YEARS } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Search } from "lucide-react";
+import { Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
-
-const PAST_YEARS = ["תשפ״ב", "תשפ״ג", "תשפ״ד"];
+import { Textarea } from "@/components/ui/textarea";
 
 export default function DonorManagement() {
   const [donors, setDonors] = useState<Donor[]>([]);
-  const [currentYear, setCurrentYear] = useState("");
   const [search, setSearch] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [newDonor, setNewDonor] = useState({ fullName: "", address: "", phone: "" });
 
   useEffect(() => {
     setDonors(getDonors());
-    setCurrentYear(getCurrentYear());
   }, []);
 
   const save = useCallback((updated: Donor[]) => {
@@ -41,41 +22,20 @@ export default function DonorManagement() {
     saveDonors(updated);
   }, []);
 
-  const updateDonorField = (id: string, field: string, value: string | number) => {
-    const updated = donors.map((d) =>
-      d.id === id ? { ...d, [field]: value } : d
-    );
-    save(updated);
+  const updateField = (id: number, field: keyof Donor, value: string) => {
+    save(donors.map((d) => (d.id === id ? { ...d, [field]: value } : d)));
   };
 
-  const updateDonation = (id: string, amount: string) => {
+  const updateDonation = (id: number, year: string, amount: string) => {
     const num = amount === "" ? 0 : Number(amount);
-    const updated = donors.map((d) =>
-      d.id === id
-        ? { ...d, donations: { ...d.donations, [currentYear]: num } }
-        : d
+    save(
+      donors.map((d) =>
+        d.id === id ? { ...d, donations: { ...d.donations, [year]: num } } : d
+      )
     );
-    save(updated);
   };
 
-  const addDonor = () => {
-    if (!newDonor.fullName.trim()) return;
-    const donor: Donor = {
-      id: Date.now().toString(),
-      fullName: newDonor.fullName,
-      address: newDonor.address,
-      phone: newDonor.phone,
-      notes: "",
-      donations: {},
-      currentNotes: "",
-    };
-    save([...donors, donor]);
-    setNewDonor({ fullName: "", address: "", phone: "" });
-    setDialogOpen(false);
-    toast.success("התורם נוסף בהצלחה");
-  };
-
-  const deleteDonor = (id: string) => {
+  const deleteDonor = (id: number) => {
     save(donors.filter((d) => d.id !== id));
     toast.success("התורם נמחק");
   };
@@ -83,18 +43,18 @@ export default function DonorManagement() {
   const filtered = donors.filter(
     (d) =>
       d.fullName.includes(search) ||
-      d.address.includes(search) ||
-      d.phone.includes(search)
+      d.phone.includes(search) ||
+      d.email.includes(search)
   );
 
-  const totalCurrent = filtered.reduce(
-    (sum, d) => sum + (d.donations[currentYear] || 0),
-    0
-  );
+  const totals = DONATION_YEARS.reduce((acc, y) => {
+    acc[y] = filtered.reduce((sum, d) => sum + (d.donations[y] || 0), 0);
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -104,100 +64,51 @@ export default function DonorManagement() {
             className="pr-9"
           />
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 ml-2" />
-              הוסף תורם
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>הוספת תורם חדש</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label>שם מלא</Label>
-                <Input
-                  value={newDonor.fullName}
-                  onChange={(e) => setNewDonor({ ...newDonor, fullName: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>כתובת</Label>
-                <Input
-                  value={newDonor.address}
-                  onChange={(e) => setNewDonor({ ...newDonor, address: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>טלפון</Label>
-                <Input
-                  value={newDonor.phone}
-                  onChange={(e) => setNewDonor({ ...newDonor, phone: e.target.value })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={addDonor}>הוסף</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
 
       <div className="border rounded-lg overflow-auto bg-card">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead className="text-right font-semibold w-16">מזהה</TableHead>
               <TableHead className="text-right font-semibold">שם מלא</TableHead>
-              <TableHead className="text-right font-semibold">כתובת</TableHead>
               <TableHead className="text-right font-semibold">טלפון</TableHead>
-              <TableHead className="text-right font-semibold">הערות</TableHead>
-              {PAST_YEARS.map((y) => (
-                <TableHead key={y} className="text-center font-semibold min-w-[90px]">
-                  {y}
+              <TableHead className="text-right font-semibold">דוא״ל</TableHead>
+              <TableHead className="text-right font-semibold min-w-[180px]">הערות</TableHead>
+              {DONATION_YEARS.map((y) => (
+                <TableHead key={y} className="text-center font-semibold min-w-[100px]">
+                  תרומות {y}
                 </TableHead>
               ))}
-              <TableHead className="text-center font-semibold min-w-[110px] bg-accent/50">
-                {currentYear || "שנה נוכחית"}
-              </TableHead>
-              <TableHead className="text-right font-semibold min-w-[140px] bg-accent/50">
-                הערות {currentYear}
-              </TableHead>
-              <TableHead className="w-10"></TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((donor) => (
               <TableRow key={donor.id} className="hover:bg-muted/30">
+                <TableCell className="font-mono text-muted-foreground">{donor.id}</TableCell>
                 <TableCell className="font-medium">{donor.fullName}</TableCell>
-                <TableCell className="text-muted-foreground">{donor.address}</TableCell>
                 <TableCell dir="ltr" className="text-left">{donor.phone}</TableCell>
-                <TableCell className="text-muted-foreground text-sm max-w-[150px] truncate">
-                  {donor.notes}
-                </TableCell>
-                {PAST_YEARS.map((y) => (
-                  <TableCell key={y} className="text-center tabular-nums">
-                    {donor.donations[y] ? `₪${donor.donations[y].toLocaleString()}` : "—"}
-                  </TableCell>
-                ))}
-                <TableCell className="bg-accent/20">
-                  <Input
-                    type="number"
-                    className="h-8 w-24 text-center mx-auto"
-                    value={donor.donations[currentYear] || ""}
-                    onChange={(e) => updateDonation(donor.id, e.target.value)}
-                    placeholder="₪0"
-                  />
-                </TableCell>
-                <TableCell className="bg-accent/20">
-                  <Input
-                    className="h-8 w-full"
-                    value={donor.currentNotes}
-                    onChange={(e) => updateDonorField(donor.id, "currentNotes", e.target.value)}
+                <TableCell dir="ltr" className="text-left text-sm">{donor.email || "—"}</TableCell>
+                <TableCell>
+                  <Textarea
+                    className="h-8 min-h-[32px] w-full text-sm resize-none"
+                    value={donor.notes}
+                    onChange={(e) => updateField(donor.id, "notes", e.target.value)}
                     placeholder="הערות..."
                   />
                 </TableCell>
+                {DONATION_YEARS.map((y) => (
+                  <TableCell key={y}>
+                    <Input
+                      type="number"
+                      className="h-8 w-24 text-center mx-auto"
+                      value={donor.donations[y] || ""}
+                      onChange={(e) => updateDonation(donor.id, y, e.target.value)}
+                      placeholder="₪0"
+                    />
+                  </TableCell>
+                ))}
                 <TableCell>
                   <Button
                     variant="ghost"
@@ -212,7 +123,7 @@ export default function DonorManagement() {
             ))}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   לא נמצאו תורמים
                 </TableCell>
               </TableRow>
@@ -221,12 +132,13 @@ export default function DonorManagement() {
         </Table>
       </div>
 
-      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
         <span>סה״כ תורמים: {filtered.length}</span>
-        <span>|</span>
-        <span className="font-semibold text-foreground">
-          סה״כ תרומות {currentYear}: ₪{totalCurrent.toLocaleString()}
-        </span>
+        {DONATION_YEARS.map((y) => (
+          <span key={y}>
+            | סה״כ {y}: <span className="font-semibold text-foreground">₪{totals[y]?.toLocaleString()}</span>
+          </span>
+        ))}
       </div>
     </div>
   );
