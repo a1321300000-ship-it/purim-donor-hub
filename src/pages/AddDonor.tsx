@@ -13,7 +13,8 @@ export default function AddDonor() {
   const [form, setForm] = useState({
     fullName: "",
     phone: "",
-    email: "",
+    city: "",
+    address: "",
     notes: "",
     donations: {} as Record<string, number>,
   });
@@ -37,7 +38,8 @@ export default function AddDonor() {
       id: getNextId(),
       fullName: form.fullName,
       phone: form.phone,
-      email: form.email,
+      city: form.city,
+      address: form.address,
       notes: form.notes,
       donations: form.donations,
     };
@@ -63,9 +65,15 @@ export default function AddDonor() {
               <Label>טלפון</Label>
               <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
             </div>
-            <div className="space-y-2">
-              <Label>דוא״ל</Label>
-              <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>עיר</Label>
+                <Input value={form.city} onChange={(e) => set("city", e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>כתובת</Label>
+                <Input value={form.address} onChange={(e) => set("address", e.target.value)} />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>הערות</Label>

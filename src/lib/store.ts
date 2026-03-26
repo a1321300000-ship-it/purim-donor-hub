@@ -2,7 +2,8 @@ export interface Donor {
   id: number;
   fullName: string;
   phone: string;
-  email: string;
+  city: string;
+  address: string;
   notes: string;
   donations: Record<string, number>;
 }
@@ -10,38 +11,56 @@ export interface Donor {
 const DONORS_KEY = "crm_donors";
 const NEXT_ID_KEY = "crm_next_id";
 
+export const DONATION_YEARS = ["תשפ\"ג", "תשפ\"ד", "תשפ\"ה"] as const;
+
+export const DONOR_FIELDS: { key: string; label: string }[] = [
+  { key: "id", label: "מזהה" },
+  { key: "fullName", label: "שם מלא" },
+  { key: "phone", label: "טלפון" },
+  { key: "city", label: "עיר" },
+  { key: "address", label: "כתובת" },
+  { key: "notes", label: "הערות" },
+  { key: "תשפ\"ג", label: "תרומות תשפ\"ג" },
+  { key: "תשפ\"ד", label: "תרומות תשפ\"ד" },
+  { key: "תשפ\"ה", label: "תרומות תשפ\"ה" },
+];
+
 const SAMPLE_DONORS: Donor[] = [
   {
     id: 1,
     fullName: "משה כהן",
     phone: "050-1234567",
-    email: "moshe@example.com",
+    city: "ירושלים",
+    address: "רחוב הרצל 15",
     notes: "תורם קבוע",
-    donations: { "2023": 500, "2024": 750, "2025": 1000 },
+    donations: { "תשפ\"ג": 500, "תשפ\"ד": 750, "תשפ\"ה": 1000 },
   },
   {
     id: 2,
     fullName: "שרה לוי",
     phone: "052-9876543",
-    email: "sara@example.com",
+    city: "בני ברק",
+    address: "רחוב רבי עקיבא 42",
     notes: "מעדיפה לתרום במזומן",
-    donations: { "2023": 200, "2024": 300, "2025": 300 },
+    donations: { "תשפ\"ג": 200, "תשפ\"ד": 300, "תשפ\"ה": 300 },
   },
   {
     id: 3,
     fullName: "יעקב אברהמי",
     phone: "054-5551234",
-    email: "",
+    city: "תל אביב",
+    address: "שדרות רוטשילד 8",
     notes: "",
-    donations: { "2023": 1000, "2024": 1200, "2025": 1500 },
+    donations: { "תשפ\"ג": 1000, "תשפ\"ד": 1200, "תשפ\"ה": 1500 },
   },
   {
     id: 4,
     fullName: "רחל גולדשטיין",
     phone: "058-7778899",
-    email: "rachel.g@example.com",
+    city: "חיפה",
+    address: "רחוב הנביאים 3",
     notes: "לצור קשר בערב בלבד",
-    donations: { "2023": 100, "2024": 150, "2025": 200 },
+    donations: { "תשפ\"ג": 100, "תשפ\"ד": 150, "תשפ\"ה": 200 },
   },
 ];
 
@@ -65,16 +84,3 @@ export function getNextId(): number {
   localStorage.setItem(NEXT_ID_KEY, String(id + 1));
   return id;
 }
-
-export const DONATION_YEARS = ["2023", "2024", "2025"] as const;
-
-export const DONOR_FIELDS: { key: keyof Donor | string; label: string }[] = [
-  { key: "id", label: "מזהה" },
-  { key: "fullName", label: "שם מלא" },
-  { key: "phone", label: "טלפון" },
-  { key: "email", label: 'דוא"ל' },
-  { key: "notes", label: "הערות" },
-  { key: "2023", label: "תרומות 2023" },
-  { key: "2024", label: "תרומות 2024" },
-  { key: "2025", label: "תרומות 2025" },
-];
