@@ -1,54 +1,47 @@
 export interface Donor {
-  id: string;
+  id: number;
   fullName: string;
-  address: string;
   phone: string;
+  email: string;
   notes: string;
   donations: Record<string, number>;
-  currentNotes: string;
 }
 
 const DONORS_KEY = "crm_donors";
-const YEAR_KEY = "crm_current_year";
-
-const DEFAULT_YEAR = "תשפ״ה";
+const NEXT_ID_KEY = "crm_next_id";
 
 const SAMPLE_DONORS: Donor[] = [
   {
-    id: "1",
+    id: 1,
     fullName: "משה כהן",
-    address: "רחוב הרצל 15, ירושלים",
     phone: "050-1234567",
+    email: "moshe@example.com",
     notes: "תורם קבוע",
-    donations: { 'תשפ״ב': 500, 'תשפ״ג': 750, 'תשפ״ד': 1000 },
-    currentNotes: "",
+    donations: { "2023": 500, "2024": 750, "2025": 1000 },
   },
   {
-    id: "2",
+    id: 2,
     fullName: "שרה לוי",
-    address: "רחוב ביאליק 8, בני ברק",
     phone: "052-9876543",
+    email: "sara@example.com",
     notes: "מעדיפה לתרום במזומן",
-    donations: { 'תשפ״ב': 200, 'תשפ״ג': 300, 'תשפ״ד': 300 },
-    currentNotes: "",
+    donations: { "2023": 200, "2024": 300, "2025": 300 },
   },
   {
-    id: "3",
+    id: 3,
     fullName: "יעקב אברהמי",
-    address: "רחוב הנשיא 22, פתח תקווה",
     phone: "054-5551234",
+    email: "",
     notes: "",
-    donations: { 'תשפ״ב': 1000, 'תשפ״ג': 1200, 'תשפ״ד': 1500 },
-    currentNotes: "",
+    donations: { "2023": 1000, "2024": 1200, "2025": 1500 },
   },
   {
-    id: "4",
+    id: 4,
     fullName: "רחל גולדשטיין",
-    address: "רחוב סוקולוב 3, רמת גן",
     phone: "058-7778899",
+    email: "rachel.g@example.com",
     notes: "לצור קשר בערב בלבד",
-    donations: { 'תשפ״ב': 100, 'תשפ״ג': 150, 'תשפ״ד': 200 },
-    currentNotes: "",
+    donations: { "2023": 100, "2024": 150, "2025": 200 },
   },
 ];
 
@@ -56,6 +49,7 @@ export function getDonors(): Donor[] {
   const data = localStorage.getItem(DONORS_KEY);
   if (!data) {
     localStorage.setItem(DONORS_KEY, JSON.stringify(SAMPLE_DONORS));
+    localStorage.setItem(NEXT_ID_KEY, "5");
     return SAMPLE_DONORS;
   }
   return JSON.parse(data);
@@ -65,10 +59,22 @@ export function saveDonors(donors: Donor[]) {
   localStorage.setItem(DONORS_KEY, JSON.stringify(donors));
 }
 
-export function getCurrentYear(): string {
-  return localStorage.getItem(YEAR_KEY) || DEFAULT_YEAR;
+export function getNextId(): number {
+  const raw = localStorage.getItem(NEXT_ID_KEY);
+  const id = raw ? parseInt(raw, 10) : 1;
+  localStorage.setItem(NEXT_ID_KEY, String(id + 1));
+  return id;
 }
 
-export function setCurrentYear(year: string) {
-  localStorage.setItem(YEAR_KEY, year);
-}
+export const DONATION_YEARS = ["2023", "2024", "2025"] as const;
+
+export const DONOR_FIELDS: { key: keyof Donor | string; label: string }[] = [
+  { key: "id", label: "מזהה" },
+  { key: "fullName", label: "שם מלא" },
+  { key: "phone", label: "טלפון" },
+  { key: "email", label: 'דוא"ל' },
+  { key: "notes", label: "הערות" },
+  { key: "2023", label: "תרומות 2023" },
+  { key: "2024", label: "תרומות 2024" },
+  { key: "2025", label: "תרומות 2025" },
+];

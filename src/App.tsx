@@ -5,7 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/Layout";
 import DonorManagement from "@/pages/DonorManagement";
-import SettingsPage from "@/pages/SettingsPage";
+import AddDonor from "@/pages/AddDonor";
+import DataSettings from "@/pages/DataSettings";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -19,7 +20,8 @@ const App = () => (
         <Layout>
           <Routes>
             <Route path="/" element={<DonorManagement />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/add-donor" element={<AddDonor />} />
+            <Route path="/data-settings" element={<DataSettings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
