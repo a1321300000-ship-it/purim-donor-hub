@@ -14,7 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bachurim: {
+        Row: {
+          address: string
+          city: string
+          created_at: string
+          full_name: string
+          id: number
+          notes: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          city?: string
+          created_at?: string
+          full_name?: string
+          id?: never
+          notes?: string
+          phone?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          city?: string
+          created_at?: string
+          full_name?: string
+          id?: never
+          notes?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      donors: {
+        Row: {
+          address: string
+          city: string
+          created_at: string
+          donations: Json
+          full_name: string
+          id: number
+          notes: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          city?: string
+          created_at?: string
+          donations?: Json
+          full_name?: string
+          id?: never
+          notes?: string
+          phone?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          city?: string
+          created_at?: string
+          donations?: Json
+          full_name?: string
+          id?: never
+          notes?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
