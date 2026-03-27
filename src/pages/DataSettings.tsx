@@ -1,21 +1,35 @@
-import { useState, useRef } from "react";
-import { getDonors, saveDonors, getNextId, Donor, DONOR_FIELDS, DONATION_YEARS } from "@/lib/store";
+import { useState, useRef, useEffect } from "react";
+import { useSettings, useSaveSetting } from "@/hooks/useSettings";
+import { useDonors, useAddDonorsBatch } from "@/hooks/useDonors";
+import { getDonorFields, Donor } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Upload, Download } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Upload, Download, Settings } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
 type ColumnMapping = Record<string, string>;
 
+const HEBREW_YEARS = [
+  'תשפ"א', 'תשפ"ב', 'תשפ"ג', 'תשפ"ד', 'תשפ"ה', 'תשפ"ו', 'תשפ"ז', 'תשפ"ח', 'תשפ"ט',
+  'תש"צ',
+];
+
+function generateYearsList(currentYear: string, count: number): string[] {
+  const idx = HEBREW_YEARS.indexOf(currentYear);
+  if (idx === -1) return [currentYear];
+  const start = Math.max(0, idx - count + 1);
+  return HEBREW_YEARS.slice(start, idx + 1);
+}
+
 function parseFile(file: File): Promise<{ columns: string[]; rows: Record<string, string>[] }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     const isCSV = file.name.endsWith(".csv") || file.name.endsWith(".txt");
-
     reader.onload = (ev) => {
       try {
         if (isCSV) {
@@ -47,13 +61,22 @@ function parseFile(file: File): Promise<{ columns: string[]; rows: Record<string
         reject(err);
       }
     };
-
     if (isCSV) reader.readAsText(file);
     else reader.readAsArrayBuffer(file);
   });
 }
 
 export default function DataSettings() {
+  const { data: settings, isLoading: settingsLoading } = useSettings();
+  const { data: donors = [] } = useDonors();
+  const saveSetting = useSaveSetting();
+  const addBatch = useAddDonorsBatch();
+
+  const yearsList = settings?.years_list || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'];
+  const currentYear = settings?.current_year || 'תשפ"ה';
+  const yearCount = settings?.year_count || 3;
+  const DONOR_FIELDS = getDonorFields(yearsList);
+
   const [importTarget, setImportTarget] = useState("donors");
   const [fileColumns, setFileColumns] = useState<string[]>([]);
   const [fileData, setFileData] = useState<Record<string, string>[]>([]);
@@ -61,6 +84,25 @@ export default function DataSettings() {
   const [exportFields, setExportFields] = useState<string[]>(DONOR_FIELDS.map((f) => f.key));
   const [exportFormat, setExportFormat] = useState<"xlsx" | "csv">("xlsx");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Update export fields when years change
+  useEffect(() => {
+    setExportFields(DONOR_FIELDS.map((f) => f.key));
+  }, [yearsList.join(",")]);
+
+  const handleYearChange = async (newYear: string) => {
+    const newList = generateYearsList(newYear, yearCount);
+    await saveSetting.mutateAsync({ key: "current_year", value: newYear });
+    await saveSetting.mutateAsync({ key: "years_list", value: newList });
+    toast.success(`השנה הנוכחית עודכנה ל-${newYear}`);
+  };
+
+  const handleYearCountChange = async (newCount: number) => {
+    const newList = generateYearsList(currentYear, newCount);
+    await saveSetting.mutateAsync({ key: "year_count", value: newCount });
+    await saveSetting.mutateAsync({ key: "years_list", value: newList });
+    toast.success(`מציג ${newCount} שנים`);
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -84,34 +126,37 @@ export default function DataSettings() {
 
   const handleImport = () => {
     if (fileData.length === 0) return;
-    const donors = getDonors();
-    const newDonors: Donor[] = fileData.map((row) => {
-      const d: Donor = { id: getNextId(), fullName: "", phone: "", city: "", address: "", notes: "", donations: {} };
+    const newDonors: Omit<Donor, "id" | "created_at" | "updated_at">[] = fileData.map((row) => {
+      const d: Omit<Donor, "id" | "created_at" | "updated_at"> = {
+        full_name: "", phone: "", city: "", address: "", notes: "", donations: {},
+      };
       Object.entries(mapping).forEach(([fileCol, fieldKey]) => {
         const val = row[fileCol] || "";
-        if (DONATION_YEARS.includes(fieldKey as typeof DONATION_YEARS[number])) {
+        if (yearsList.includes(fieldKey)) {
           d.donations[fieldKey] = Number(val) || 0;
-        } else if (fieldKey !== "id") {
+        } else if (fieldKey !== "id" && fieldKey in d) {
           (d as any)[fieldKey] = val;
         }
       });
       return d;
     });
-    saveDonors([...donors, ...newDonors]);
-    setFileData([]);
-    setFileColumns([]);
-    setMapping({});
-    toast.success(`${newDonors.length} תורמים יובאו בהצלחה`);
+    addBatch.mutate(newDonors, {
+      onSuccess: () => {
+        setFileData([]);
+        setFileColumns([]);
+        setMapping({});
+        toast.success(`${newDonors.length} תורמים יובאו בהצלחה`);
+      },
+      onError: () => toast.error("שגיאה ביבוא הנתונים"),
+    });
   };
 
   const handleExport = () => {
-    const donors = getDonors();
     const headers = DONOR_FIELDS.filter((f) => exportFields.includes(f.key));
-
     const rows = donors.map((d) => {
       const row: Record<string, string | number> = {};
       headers.forEach((h) => {
-        if (DONATION_YEARS.includes(h.key as typeof DONATION_YEARS[number])) {
+        if (yearsList.includes(h.key)) {
           row[h.label] = d.donations[h.key] || 0;
         } else {
           row[h.label] = (d as any)[h.key] ?? "";
@@ -130,7 +175,7 @@ export default function DataSettings() {
         headers.map((h) => h.label).join(","),
         ...donors.map((d) =>
           headers.map((h) => {
-            if (DONATION_YEARS.includes(h.key as typeof DONATION_YEARS[number])) return d.donations[h.key] || 0;
+            if (yearsList.includes(h.key)) return d.donations[h.key] || 0;
             return `"${(d as any)[h.key] ?? ""}"`;
           }).join(",")
         ),
@@ -152,8 +197,54 @@ export default function DataSettings() {
     );
   };
 
+  if (settingsLoading) return <div className="text-center py-8 text-muted-foreground">טוען...</div>;
+
   return (
     <div className="space-y-6 max-w-2xl">
+      {/* Year Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            הגדרות שנים
+          </CardTitle>
+          <CardDescription>בחירת השנה הנוכחית וכמות השנים המוצגות</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>שנה נוכחית</Label>
+              <Select value={currentYear} onValueChange={handleYearChange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {HEBREW_YEARS.map((y) => (
+                    <SelectItem key={y} value={y}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>כמות שנים להצגה</Label>
+              <Select value={String(yearCount)} onValueChange={(v) => handleYearCountChange(Number(v))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[2, 3, 4, 5].map((n) => (
+                    <SelectItem key={n} value={String(n)}>{n} שנים</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            שנים מוצגות: <span className="font-medium text-foreground">{yearsList.join("  ←  ")}</span>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Import */}
       <Card>
         <CardHeader>
@@ -177,13 +268,7 @@ export default function DataSettings() {
             </Select>
           </div>
 
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv,.txt,.xlsx,.xls"
-            className="hidden"
-            onChange={handleFileUpload}
-          />
+          <input ref={fileRef} type="file" accept=".csv,.txt,.xlsx,.xls" className="hidden" onChange={handleFileUpload} />
           <Button variant="outline" onClick={() => fileRef.current?.click()}>
             <Upload className="h-4 w-4 ml-2" />
             בחר קובץ (Excel / CSV)
@@ -198,9 +283,7 @@ export default function DataSettings() {
                   <span className="text-muted-foreground">←</span>
                   <Select
                     value={mapping[col] || "_skip"}
-                    onValueChange={(v) =>
-                      setMapping((prev) => ({ ...prev, [col]: v === "_skip" ? "" : v }))
-                    }
+                    onValueChange={(v) => setMapping((prev) => ({ ...prev, [col]: v === "_skip" ? "" : v }))}
                   >
                     <SelectTrigger className="w-40">
                       <SelectValue />
@@ -208,16 +291,14 @@ export default function DataSettings() {
                     <SelectContent>
                       <SelectItem value="_skip">דלג</SelectItem>
                       {DONOR_FIELDS.filter((f) => f.key !== "id").map((f) => (
-                        <SelectItem key={f.key} value={f.key}>
-                          {f.label}
-                        </SelectItem>
+                        <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               ))}
-              <Button onClick={handleImport}>
-                ייבא {fileData.length} שורות
+              <Button onClick={handleImport} disabled={addBatch.isPending}>
+                {addBatch.isPending ? "מייבא..." : `ייבא ${fileData.length} שורות`}
               </Button>
             </div>
           )}
