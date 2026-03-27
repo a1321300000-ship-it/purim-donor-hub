@@ -1,86 +1,129 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export interface Donor {
   id: number;
-  fullName: string;
+  full_name: string;
   phone: string;
   city: string;
   address: string;
   notes: string;
   donations: Record<string, number>;
+  created_at?: string;
+  updated_at?: string;
 }
 
-const DONORS_KEY = "crm_donors";
-const NEXT_ID_KEY = "crm_next_id";
+export interface AppSettings {
+  current_year: string;
+  year_count: number;
+  years_list: string[];
+}
 
-export const DONATION_YEARS = ["תשפ\"ג", "תשפ\"ד", "תשפ\"ה"] as const;
+// ---- Settings ----
 
-export const DONOR_FIELDS: { key: string; label: string }[] = [
-  { key: "id", label: "מזהה" },
-  { key: "fullName", label: "שם מלא" },
-  { key: "phone", label: "טלפון" },
-  { key: "city", label: "עיר" },
-  { key: "address", label: "כתובת" },
-  { key: "notes", label: "הערות" },
-  { key: "תשפ\"ג", label: "תרומות תשפ\"ג" },
-  { key: "תשפ\"ד", label: "תרומות תשפ\"ד" },
-  { key: "תשפ\"ה", label: "תרומות תשפ\"ה" },
-];
+export async function getSettings(): Promise<AppSettings> {
+  const { data, error } = await supabase
+    .from("settings")
+    .select("key, value");
 
-const SAMPLE_DONORS: Donor[] = [
-  {
-    id: 1,
-    fullName: "משה כהן",
-    phone: "050-1234567",
-    city: "ירושלים",
-    address: "רחוב הרצל 15",
-    notes: "תורם קבוע",
-    donations: { "תשפ\"ג": 500, "תשפ\"ד": 750, "תשפ\"ה": 1000 },
-  },
-  {
-    id: 2,
-    fullName: "שרה לוי",
-    phone: "052-9876543",
-    city: "בני ברק",
-    address: "רחוב רבי עקיבא 42",
-    notes: "מעדיפה לתרום במזומן",
-    donations: { "תשפ\"ג": 200, "תשפ\"ד": 300, "תשפ\"ה": 300 },
-  },
-  {
-    id: 3,
-    fullName: "יעקב אברהמי",
-    phone: "054-5551234",
-    city: "תל אביב",
-    address: "שדרות רוטשילד 8",
-    notes: "",
-    donations: { "תשפ\"ג": 1000, "תשפ\"ד": 1200, "תשפ\"ה": 1500 },
-  },
-  {
-    id: 4,
-    fullName: "רחל גולדשטיין",
-    phone: "058-7778899",
-    city: "חיפה",
-    address: "רחוב הנביאים 3",
-    notes: "לצור קשר בערב בלבד",
-    donations: { "תשפ\"ג": 100, "תשפ\"ד": 150, "תשפ\"ה": 200 },
-  },
-];
-
-export function getDonors(): Donor[] {
-  const data = localStorage.getItem(DONORS_KEY);
-  if (!data) {
-    localStorage.setItem(DONORS_KEY, JSON.stringify(SAMPLE_DONORS));
-    localStorage.setItem(NEXT_ID_KEY, "5");
-    return SAMPLE_DONORS;
+  if (error || !data || data.length === 0) {
+    return {
+      current_year: 'תשפ"ה',
+      year_count: 3,
+      years_list: ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'],
+    };
   }
-  return JSON.parse(data);
+
+  const map: Record<string, any> = {};
+  data.forEach((row) => (map[row.key] = row.value));
+
+  return {
+    current_year: (map.current_year as string) || 'תשפ"ה',
+    year_count: (map.year_count as number) || 3,
+    years_list: (map.years_list as string[]) || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'],
+  };
 }
 
-export function saveDonors(donors: Donor[]) {
-  localStorage.setItem(DONORS_KEY, JSON.stringify(donors));
+export async function saveSetting(key: string, value: any) {
+  const { error } = await supabase
+    .from("settings")
+    .upsert({ key, value }, { onConflict: "key" });
+  if (error) throw error;
 }
 
-export function getNextId(): number {
-  const raw = localStorage.getItem(NEXT_ID_KEY);
-  const id = raw ? parseInt(raw, 10) : 1;
-  localStorage.setItem(NEXT_ID_KEY, String(id + 1));
-  return id;
+// ---- Donors ----
+
+export async function getDonors(): Promise<Donor[]> {
+  const { data, error } = await supabase
+    .from("donors")
+    .select("*")
+    .order("id", { ascending: true });
+
+  if (error) throw error;
+  return (data || []).map((d) => ({
+    ...d,
+    donations: (d.donations as Record<string, number>) || {},
+  }));
+}
+
+export async function addDonor(donor: Omit<Donor, "id" | "created_at" | "updated_at">): Promise<Donor> {
+  const { data, error } = await supabase
+    .from("donors")
+    .insert({
+      full_name: donor.full_name,
+      phone: donor.phone,
+      city: donor.city,
+      address: donor.address,
+      notes: donor.notes,
+      donations: donor.donations as any,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return { ...data, donations: (data.donations as Record<string, number>) || {} };
+}
+
+export async function updateDonor(id: number, updates: Partial<Omit<Donor, "id">>): Promise<void> {
+  const payload: Record<string, any> = {};
+  if (updates.full_name !== undefined) payload.full_name = updates.full_name;
+  if (updates.phone !== undefined) payload.phone = updates.phone;
+  if (updates.city !== undefined) payload.city = updates.city;
+  if (updates.address !== undefined) payload.address = updates.address;
+  if (updates.notes !== undefined) payload.notes = updates.notes;
+  if (updates.donations !== undefined) payload.donations = updates.donations;
+
+  const { error } = await supabase.from("donors").update(payload).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteDonor(id: number): Promise<void> {
+  const { error } = await supabase.from("donors").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function addDonorsBatch(donors: Omit<Donor, "id" | "created_at" | "updated_at">[]): Promise<void> {
+  const { error } = await supabase.from("donors").insert(
+    donors.map((d) => ({
+      full_name: d.full_name,
+      phone: d.phone,
+      city: d.city,
+      address: d.address,
+      notes: d.notes,
+      donations: d.donations as any,
+    }))
+  );
+  if (error) throw error;
+}
+
+// Helper: generate DONOR_FIELDS dynamically based on years
+export function getDonorFields(yearsList: string[]) {
+  return [
+    { key: "id", label: "מזהה" },
+    { key: "full_name", label: "שם מלא" },
+    { key: "phone", label: "טלפון" },
+    { key: "city", label: "עיר" },
+    { key: "address", label: "כתובת" },
+    { key: "notes", label: "הערות" },
+    ...yearsList.map((y) => ({ key: y, label: `תרומות ${y}` })),
+  ];
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getDonors, saveDonors, getNextId, Donor, DONATION_YEARS } from "@/lib/store";
+import { useAddDonor } from "@/hooks/useDonors";
+import { useSettings } from "@/hooks/useSettings";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,8 +11,12 @@ import { toast } from "sonner";
 
 export default function AddDonor() {
   const navigate = useNavigate();
+  const addDonor = useAddDonor();
+  const { data: settings } = useSettings();
+  const yearsList = settings?.years_list || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'];
+
   const [form, setForm] = useState({
-    fullName: "",
+    full_name: "",
     phone: "",
     city: "",
     address: "",
@@ -30,23 +35,17 @@ export default function AddDonor() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.fullName.trim()) {
+    if (!form.full_name.trim()) {
       toast.error("יש להזין שם מלא");
       return;
     }
-    const donor: Donor = {
-      id: getNextId(),
-      fullName: form.fullName,
-      phone: form.phone,
-      city: form.city,
-      address: form.address,
-      notes: form.notes,
-      donations: form.donations,
-    };
-    const donors = getDonors();
-    saveDonors([...donors, donor]);
-    toast.success("התורם נוסף בהצלחה");
-    navigate("/");
+    addDonor.mutate(form, {
+      onSuccess: () => {
+        toast.success("התורם נוסף בהצלחה");
+        navigate("/");
+      },
+      onError: () => toast.error("שגיאה בהוספת תורם"),
+    });
   };
 
   return (
@@ -59,7 +58,7 @@ export default function AddDonor() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label>שם מלא *</Label>
-              <Input value={form.fullName} onChange={(e) => set("fullName", e.target.value)} />
+              <Input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>טלפון</Label>
@@ -81,7 +80,7 @@ export default function AddDonor() {
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              {DONATION_YEARS.map((y) => (
+              {yearsList.map((y) => (
                 <div key={y} className="space-y-1">
                   <Label>תרומות {y}</Label>
                   <Input
@@ -95,7 +94,9 @@ export default function AddDonor() {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <Button type="submit">הוסף תורם</Button>
+              <Button type="submit" disabled={addDonor.isPending}>
+                {addDonor.isPending ? "שומר..." : "הוסף תורם"}
+              </Button>
               <Button type="button" variant="outline" onClick={() => navigate("/")}>
                 ביטול
               </Button>

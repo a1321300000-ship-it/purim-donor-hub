@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
-import { getDonors, saveDonors, Donor, DONATION_YEARS } from "@/lib/store";
+import { useState, useMemo } from "react";
+import { useDonors, useUpdateDonor, useDeleteDonor } from "@/hooks/useDonors";
+import { useSettings } from "@/hooks/useSettings";
+import { Donor } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,57 +16,78 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function DonorManagement() {
-  const [donors, setDonors] = useState<Donor[]>([]);
+  const { data: donors = [], isLoading } = useDonors();
+  const { data: settings } = useSettings();
+  const updateDonor = useUpdateDonor();
+  const deleteDonorMut = useDeleteDonor();
+
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [editDonor, setEditDonor] = useState<Donor | null>(null);
 
-  useEffect(() => {
-    setDonors(getDonors());
-  }, []);
+  const yearsList = settings?.years_list || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'];
 
-  const save = useCallback((updated: Donor[]) => {
-    setDonors(updated);
-    saveDonors(updated);
-  }, []);
-
-  const updateFilter = (key: string, value: string) => {
+  const updateFilter = (key: string, value: string) =>
     setFilters((prev) => ({ ...prev, [key]: value }));
-  };
 
-  const deleteDonor = (id: number) => {
-    save(donors.filter((d) => d.id !== id));
-    toast.success("התורם נמחק");
+  const handleDelete = (id: number) => {
+    deleteDonorMut.mutate(id, {
+      onSuccess: () => toast.success("התורם נמחק"),
+    });
   };
 
   const saveEdit = () => {
     if (!editDonor) return;
-    save(donors.map((d) => (d.id === editDonor.id ? editDonor : d)));
-    setEditDonor(null);
-    toast.success("התורם עודכן");
+    updateDonor.mutate(
+      {
+        id: editDonor.id,
+        updates: {
+          full_name: editDonor.full_name,
+          phone: editDonor.phone,
+          city: editDonor.city,
+          address: editDonor.address,
+          notes: editDonor.notes,
+          donations: editDonor.donations,
+        },
+      },
+      {
+        onSuccess: () => {
+          setEditDonor(null);
+          toast.success("התורם עודכן");
+        },
+      }
+    );
   };
 
-  const filtered = donors.filter((d) => {
-    const f = filters;
-    if (f.fullName && !d.fullName.includes(f.fullName)) return false;
-    if (f.phone && !d.phone.includes(f.phone)) return false;
-    if (f.city && !d.city.includes(f.city)) return false;
-    if (f.address && !d.address.includes(f.address)) return false;
-    if (f.notes && !d.notes.includes(f.notes)) return false;
-    for (const y of DONATION_YEARS) {
-      if (f[y] && !(d.donations[y]?.toString() || "0").includes(f[y])) return false;
-    }
-    return true;
-  });
+  const filtered = useMemo(() => {
+    return donors.filter((d) => {
+      const f = filters;
+      if (f.full_name && !d.full_name.includes(f.full_name)) return false;
+      if (f.phone && !d.phone.includes(f.phone)) return false;
+      if (f.city && !d.city.includes(f.city)) return false;
+      if (f.address && !d.address.includes(f.address)) return false;
+      if (f.notes && !d.notes.includes(f.notes)) return false;
+      for (const y of yearsList) {
+        if (f[y] && !(d.donations[y]?.toString() || "0").includes(f[y])) return false;
+      }
+      return true;
+    });
+  }, [donors, filters, yearsList]);
 
-  const totals = DONATION_YEARS.reduce((acc, y) => {
-    acc[y] = filtered.reduce((sum, d) => sum + (d.donations[y] || 0), 0);
-    return acc;
-  }, {} as Record<string, number>);
+  const totals = useMemo(() => {
+    return yearsList.reduce((acc, y) => {
+      acc[y] = filtered.reduce((sum, d) => sum + (d.donations[y] || 0), 0);
+      return acc;
+    }, {} as Record<string, number>);
+  }, [filtered, yearsList]);
 
-  const columnFields = ["fullName", "phone", "city", "address", "notes"] as const;
+  const columnFields = ["full_name", "phone", "city", "address", "notes"] as const;
   const columnLabels: Record<string, string> = {
-    fullName: "שם מלא", phone: "טלפון", city: "עיר", address: "כתובת", notes: "הערות",
+    full_name: "שם מלא", phone: "טלפון", city: "עיר", address: "כתובת", notes: "הערות",
   };
+
+  if (isLoading) {
+    return <div className="text-center py-12 text-muted-foreground">טוען נתונים...</div>;
+  }
 
   return (
     <div className="space-y-4">
@@ -78,14 +101,13 @@ export default function DonorManagement() {
                   {columnLabels[key]}
                 </TableHead>
               ))}
-              {DONATION_YEARS.map((y) => (
+              {yearsList.map((y) => (
                 <TableHead key={y} className="text-center font-semibold min-w-[100px]">
                   תרומות {y}
                 </TableHead>
               ))}
               <TableHead className="w-10" />
             </TableRow>
-            {/* Filter row */}
             <TableRow className="bg-muted/20">
               <TableHead />
               {columnFields.map((key) => (
@@ -98,7 +120,7 @@ export default function DonorManagement() {
                   />
                 </TableHead>
               ))}
-              {DONATION_YEARS.map((y) => (
+              {yearsList.map((y) => (
                 <TableHead key={y}>
                   <Input
                     className="h-7 text-xs w-20 mx-auto"
@@ -119,12 +141,12 @@ export default function DonorManagement() {
                 onClick={() => setEditDonor({ ...donor, donations: { ...donor.donations } })}
               >
                 <TableCell className="font-mono text-muted-foreground">{donor.id}</TableCell>
-                <TableCell className="font-medium">{donor.fullName}</TableCell>
+                <TableCell className="font-medium">{donor.full_name}</TableCell>
                 <TableCell dir="ltr" className="text-left">{donor.phone}</TableCell>
                 <TableCell>{donor.city}</TableCell>
                 <TableCell>{donor.address}</TableCell>
                 <TableCell className="text-sm max-w-[180px] truncate">{donor.notes || "—"}</TableCell>
-                {DONATION_YEARS.map((y) => (
+                {yearsList.map((y) => (
                   <TableCell key={y} className="text-center">
                     {donor.donations[y] ? `₪${donor.donations[y].toLocaleString()}` : "—"}
                   </TableCell>
@@ -134,7 +156,7 @@ export default function DonorManagement() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={(e) => { e.stopPropagation(); deleteDonor(donor.id); }}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(donor.id); }}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -143,7 +165,7 @@ export default function DonorManagement() {
             ))}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9 + DONATION_YEARS.length} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7 + yearsList.length} className="text-center py-8 text-muted-foreground">
                   לא נמצאו תורמים
                 </TableCell>
               </TableRow>
@@ -154,7 +176,7 @@ export default function DonorManagement() {
 
       <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
         <span>סה״כ תורמים: {filtered.length}</span>
-        {DONATION_YEARS.map((y) => (
+        {yearsList.map((y) => (
           <span key={y}>
             | סה״כ {y}: <span className="font-semibold text-foreground">₪{totals[y]?.toLocaleString()}</span>
           </span>
@@ -171,7 +193,7 @@ export default function DonorManagement() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>שם מלא</Label>
-                <Input value={editDonor.fullName} onChange={(e) => setEditDonor({ ...editDonor, fullName: e.target.value })} />
+                <Input value={editDonor.full_name} onChange={(e) => setEditDonor({ ...editDonor, full_name: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
@@ -192,7 +214,7 @@ export default function DonorManagement() {
                 <Textarea value={editDonor.notes} onChange={(e) => setEditDonor({ ...editDonor, notes: e.target.value })} />
               </div>
               <div className="grid grid-cols-3 gap-3">
-                {DONATION_YEARS.map((y) => (
+                {yearsList.map((y) => (
                   <div key={y} className="space-y-1">
                     <Label>תרומות {y}</Label>
                     <Input
@@ -208,7 +230,9 @@ export default function DonorManagement() {
                 ))}
               </div>
               <div className="flex gap-2 pt-2">
-                <Button onClick={saveEdit}>שמור</Button>
+                <Button onClick={saveEdit} disabled={updateDonor.isPending}>
+                  {updateDonor.isPending ? "שומר..." : "שמור"}
+                </Button>
                 <Button variant="outline" onClick={() => setEditDonor(null)}>ביטול</Button>
               </div>
             </div>
