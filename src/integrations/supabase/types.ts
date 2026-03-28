@@ -19,30 +19,42 @@ export type Database = {
           address: string
           city: string
           created_at: string
+          father_name: string
+          floor: string
           full_name: string
           id: number
+          is_new: boolean
           notes: string
           phone: string
+          title: string
           updated_at: string
         }
         Insert: {
           address?: string
           city?: string
           created_at?: string
+          father_name?: string
+          floor?: string
           full_name?: string
           id?: never
+          is_new?: boolean
           notes?: string
           phone?: string
+          title?: string
           updated_at?: string
         }
         Update: {
           address?: string
           city?: string
           created_at?: string
+          father_name?: string
+          floor?: string
           full_name?: string
           id?: never
+          is_new?: boolean
           notes?: string
           phone?: string
+          title?: string
           updated_at?: string
         }
         Relationships: []
@@ -53,10 +65,14 @@ export type Database = {
           city: string
           created_at: string
           donations: Json
+          father_name: string
+          floor: string
           full_name: string
           id: number
+          is_new: boolean
           notes: string
           phone: string
+          title: string
           updated_at: string
         }
         Insert: {
@@ -64,10 +80,14 @@ export type Database = {
           city?: string
           created_at?: string
           donations?: Json
+          father_name?: string
+          floor?: string
           full_name?: string
           id?: never
+          is_new?: boolean
           notes?: string
           phone?: string
+          title?: string
           updated_at?: string
         }
         Update: {
@@ -75,10 +95,14 @@ export type Database = {
           city?: string
           created_at?: string
           donations?: Json
+          father_name?: string
+          floor?: string
           full_name?: string
           id?: never
+          is_new?: boolean
           notes?: string
           phone?: string
+          title?: string
           updated_at?: string
         }
         Relationships: []
