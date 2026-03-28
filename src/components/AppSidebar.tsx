@@ -1,4 +1,4 @@
-import { Users, UserPlus, GraduationCap, FileSpreadsheet, ChevronDown, Settings } from "lucide-react";
+import { Users, UserPlus, GraduationCap, ChevronDown, Settings, List, UserCheck } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -9,8 +9,13 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const donorSubItems = [
-  { title: "ניהול תורמים", url: "/", icon: Users },
+  { title: "רשימת תורמים", url: "/", icon: List },
   { title: "הוסף תורם", url: "/add-donor", icon: UserPlus },
+];
+
+const bachurimSubItems = [
+  { title: "רשימת בחורים", url: "/bachurim", icon: List },
+  { title: "שיבוץ בחורים", url: "/bachurim-assign", icon: UserCheck },
 ];
 
 export function AppSidebar() {
@@ -18,6 +23,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const isDonorSection = location.pathname === "/" || location.pathname === "/add-donor";
+  const isBachurimSection = location.pathname === "/bachurim" || location.pathname === "/bachurim-assign";
 
   return (
     <Sidebar collapsible="icon" side="right">
@@ -28,6 +34,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
+              {/* Donors */}
               <Collapsible defaultOpen={isDonorSection} className="group/collapsible">
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
@@ -60,12 +67,38 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               </Collapsible>
 
-              <SidebarMenuItem>
-                <SidebarMenuButton className="opacity-50 cursor-not-allowed" disabled>
-                  <GraduationCap className="h-5 w-5 shrink-0" />
-                  {!collapsed && <span>ניהול בחורים</span>}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {/* Bachurim */}
+              <Collapsible defaultOpen={isBachurimSection} className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton className="font-medium">
+                      <GraduationCap className="h-5 w-5 shrink-0" />
+                      {!collapsed && (
+                        <>
+                          <span className="flex-1">ניהול בחורים</span>
+                          <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                        </>
+                      )}
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  {!collapsed && (
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {bachurimSubItems.map((item) => (
+                          <SidebarMenuSubItem key={item.url}>
+                            <SidebarMenuSubButton asChild>
+                              <NavLink to={item.url} end className="flex items-center gap-2 hover:bg-sidebar-accent/50" activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
+                                <item.icon className="h-4 w-4 shrink-0" />
+                                <span>{item.title}</span>
+                              </NavLink>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  )}
+                </SidebarMenuItem>
+              </Collapsible>
 
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>

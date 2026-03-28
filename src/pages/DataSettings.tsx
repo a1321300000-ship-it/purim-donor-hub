@@ -7,17 +7,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Upload, Download, Settings } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
 type ColumnMapping = Record<string, string>;
 
-const HEBREW_YEARS = [
-  'תשפ"א', 'תשפ"ב', 'תשפ"ג', 'תשפ"ד', 'תשפ"ה', 'תשפ"ו', 'תשפ"ז', 'תשפ"ח', 'תשפ"ט',
-  'תש"צ',
-];
+// Generate Hebrew years from תשס"ב to 30 years ahead
+function generateAllHebrewYears(): string[] {
+  const base = [
+    'תשס"ב', 'תשס"ג', 'תשס"ד', 'תשס"ה', 'תשס"ו', 'תשס"ז', 'תשס"ח', 'תשס"ט',
+    'תש"ע', 'תשע"א', 'תשע"ב', 'תשע"ג', 'תשע"ד', 'תשע"ה', 'תשע"ו', 'תשע"ז', 'תשע"ח', 'תשע"ט',
+    'תש"פ', 'תשפ"א', 'תשפ"ב', 'תשפ"ג', 'תשפ"ד', 'תשפ"ה', 'תשפ"ו', 'תשפ"ז', 'תשפ"ח', 'תשפ"ט',
+    'תש"צ', 'תשצ"א', 'תשצ"ב', 'תשצ"ג', 'תשצ"ד', 'תשצ"ה', 'תשצ"ו', 'תשצ"ז', 'תשצ"ח', 'תשצ"ט',
+    'ת"ת', 'תת"א', 'תת"ב', 'תת"ג', 'תת"ד', 'תת"ה',
+  ];
+  return base;
+}
+
+const HEBREW_YEARS = generateAllHebrewYears();
 
 function generateYearsList(currentYear: string, count: number): string[] {
   const idx = HEBREW_YEARS.indexOf(currentYear);
@@ -78,6 +86,7 @@ export default function DataSettings() {
   const DONOR_FIELDS = getDonorFields(yearsList);
 
   const [importTarget, setImportTarget] = useState("donors");
+  const [exportTarget, setExportTarget] = useState("donors");
   const [fileColumns, setFileColumns] = useState<string[]>([]);
   const [fileData, setFileData] = useState<Record<string, string>[]>([]);
   const [mapping, setMapping] = useState<ColumnMapping>({});
@@ -85,7 +94,6 @@ export default function DataSettings() {
   const [exportFormat, setExportFormat] = useState<"xlsx" | "csv">("xlsx");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Update export fields when years change
   useEffect(() => {
     setExportFields(DONOR_FIELDS.map((f) => f.key));
   }, [yearsList.join(",")]);
@@ -128,12 +136,14 @@ export default function DataSettings() {
     if (fileData.length === 0) return;
     const newDonors: Omit<Donor, "id" | "created_at" | "updated_at">[] = fileData.map((row) => {
       const d: Omit<Donor, "id" | "created_at" | "updated_at"> = {
-        full_name: "", phone: "", city: "", address: "", notes: "", donations: {},
+        title: "", full_name: "", father_name: "", phone: "", city: "", address: "", floor: "", is_new: true, notes: "", donations: {},
       };
       Object.entries(mapping).forEach(([fileCol, fieldKey]) => {
         const val = row[fileCol] || "";
         if (yearsList.includes(fieldKey)) {
           d.donations[fieldKey] = Number(val) || 0;
+        } else if (fieldKey === "is_new") {
+          d.is_new = val === "true" || val === "1" || val === "כן";
         } else if (fieldKey !== "id" && fieldKey in d) {
           (d as any)[fieldKey] = val;
         }
@@ -154,7 +164,7 @@ export default function DataSettings() {
   const handleExport = () => {
     const headers = DONOR_FIELDS.filter((f) => exportFields.includes(f.key));
     const rows = donors.map((d) => {
-      const row: Record<string, string | number> = {};
+      const row: Record<string, string | number | boolean> = {};
       headers.forEach((h) => {
         if (yearsList.includes(h.key)) {
           row[h.label] = d.donations[h.key] || 0;
@@ -165,11 +175,14 @@ export default function DataSettings() {
       return row;
     });
 
+    const sheetName = exportTarget === "donors" ? "תורמים" : "בחורים";
+    const fileName = exportTarget === "donors" ? "donors_export" : "bachurim_export";
+
     if (exportFormat === "xlsx") {
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "תורמים");
-      XLSX.writeFile(wb, "donors_export.xlsx");
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      XLSX.writeFile(wb, `${fileName}.xlsx`);
     } else {
       const csvRows = [
         headers.map((h) => h.label).join(","),
@@ -184,7 +197,7 @@ export default function DataSettings() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "donors_export.csv";
+      a.download = `${fileName}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -232,7 +245,7 @@ export default function DataSettings() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {[2, 3, 4, 5].map((n) => (
+                  {[2, 3, 4, 5, 6].map((n) => (
                     <SelectItem key={n} value={String(n)}>{n} שנים</SelectItem>
                   ))}
                 </SelectContent>
@@ -263,7 +276,7 @@ export default function DataSettings() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="donors">תורמים</SelectItem>
-                <SelectItem value="boys" disabled>בחורים (בקרוב)</SelectItem>
+                <SelectItem value="bachurim" disabled>בחורים (בקרוב)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -315,6 +328,18 @@ export default function DataSettings() {
           <CardDescription>בחירת שדות ויצוא לקובץ Excel או CSV</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>יעד יצוא</Label>
+            <Select value={exportTarget} onValueChange={setExportTarget}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="donors">רשימת תורמים</SelectItem>
+                <SelectItem value="bachurim">רשימת בחורים</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {DONOR_FIELDS.map((f) => (
               <label key={f.key} className="flex items-center gap-2 text-sm cursor-pointer">
