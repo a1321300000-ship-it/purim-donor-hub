@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useDonors, useUpdateDonor, useDeleteDonor } from "@/hooks/useDonors";
 import { useSettings } from "@/hooks/useSettings";
-import { Donor } from "@/lib/store";
+import { Donor, TITLE_OPTIONS } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,9 +10,19 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AddressFields } from "@/components/AddressFields";
+import { MoreHorizontal, Pencil, Archive, Trash2, History } from "lucide-react";
 import { toast } from "sonner";
 
 export default function DonorManagement() {
@@ -23,15 +33,20 @@ export default function DonorManagement() {
 
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [editDonor, setEditDonor] = useState<Donor | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [historyId, setHistoryId] = useState<number | null>(null);
 
   const yearsList = settings?.years_list || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'];
+  const currentYear = settings?.current_year || yearsList[yearsList.length - 1];
+  const previousYears = yearsList.filter((y) => y !== currentYear);
 
   const updateFilter = (key: string, value: string) =>
     setFilters((prev) => ({ ...prev, [key]: value }));
 
-  const handleDelete = (id: number) => {
-    deleteDonorMut.mutate(id, {
-      onSuccess: () => toast.success("התורם נמחק"),
+  const handleDelete = () => {
+    if (deleteId === null) return;
+    deleteDonorMut.mutate(deleteId, {
+      onSuccess: () => { toast.success("התורם נמחק"); setDeleteId(null); },
     });
   };
 
@@ -41,10 +56,14 @@ export default function DonorManagement() {
       {
         id: editDonor.id,
         updates: {
+          title: editDonor.title,
           full_name: editDonor.full_name,
+          father_name: editDonor.father_name,
           phone: editDonor.phone,
           city: editDonor.city,
           address: editDonor.address,
+          floor: editDonor.floor,
+          is_new: editDonor.is_new,
           notes: editDonor.notes,
           donations: editDonor.donations,
         },
@@ -58,32 +77,30 @@ export default function DonorManagement() {
     );
   };
 
+  const columnFields = ["title", "full_name", "father_name", "phone", "city", "address", "floor"] as const;
+  const columnLabels: Record<string, string> = {
+    title: "תואר", full_name: "שם מלא", father_name: "שם האב", phone: "טלפון",
+    city: "עיר", address: "כתובת", floor: "קומה",
+  };
+
   const filtered = useMemo(() => {
     return donors.filter((d) => {
       const f = filters;
-      if (f.full_name && !d.full_name.includes(f.full_name)) return false;
-      if (f.phone && !d.phone.includes(f.phone)) return false;
-      if (f.city && !d.city.includes(f.city)) return false;
-      if (f.address && !d.address.includes(f.address)) return false;
-      if (f.notes && !d.notes.includes(f.notes)) return false;
-      for (const y of yearsList) {
-        if (f[y] && !(d.donations[y]?.toString() || "0").includes(f[y])) return false;
+      for (const key of columnFields) {
+        if (f[key] && !(d as any)[key]?.includes(f[key])) return false;
       }
+      if (f.notes && !d.notes.includes(f.notes)) return false;
+      if (f[currentYear] && !(d.donations[currentYear]?.toString() || "0").includes(f[currentYear])) return false;
       return true;
     });
-  }, [donors, filters, yearsList]);
+  }, [donors, filters, columnFields, currentYear]);
 
-  const totals = useMemo(() => {
-    return yearsList.reduce((acc, y) => {
-      acc[y] = filtered.reduce((sum, d) => sum + (d.donations[y] || 0), 0);
-      return acc;
-    }, {} as Record<string, number>);
-  }, [filtered, yearsList]);
+  const currentYearTotal = useMemo(
+    () => filtered.reduce((sum, d) => sum + (d.donations[currentYear] || 0), 0),
+    [filtered, currentYear]
+  );
 
-  const columnFields = ["full_name", "phone", "city", "address", "notes"] as const;
-  const columnLabels: Record<string, string> = {
-    full_name: "שם מלא", phone: "טלפון", city: "עיר", address: "כתובת", notes: "הערות",
-  };
+  const historyDonor = historyId !== null ? donors.find((d) => d.id === historyId) : null;
 
   if (isLoading) {
     return <div className="text-center py-12 text-muted-foreground">טוען נתונים...</div>;
@@ -95,77 +112,83 @@ export default function DonorManagement() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="text-right font-semibold w-16">מזהה</TableHead>
+              <TableHead className="text-right font-semibold w-12">מזהה</TableHead>
               {columnFields.map((key) => (
                 <TableHead key={key} className="text-right font-semibold">
                   {columnLabels[key]}
                 </TableHead>
               ))}
-              {yearsList.map((y) => (
-                <TableHead key={y} className="text-center font-semibold min-w-[100px]">
-                  תרומות {y}
-                </TableHead>
-              ))}
+              <TableHead className="text-right font-semibold">הערות</TableHead>
+              <TableHead className="text-center font-semibold min-w-[100px]">
+                תרומות {currentYear}
+              </TableHead>
+              <TableHead className="w-10" />
               <TableHead className="w-10" />
             </TableRow>
             <TableRow className="bg-muted/20">
               <TableHead />
               {columnFields.map((key) => (
                 <TableHead key={key}>
-                  <Input
-                    className="h-7 text-xs"
-                    placeholder="סנן..."
-                    value={filters[key] || ""}
-                    onChange={(e) => updateFilter(key, e.target.value)}
-                  />
+                  <Input className="h-7 text-xs" placeholder="סנן..." value={filters[key] || ""} onChange={(e) => updateFilter(key, e.target.value)} />
                 </TableHead>
               ))}
-              {yearsList.map((y) => (
-                <TableHead key={y}>
-                  <Input
-                    className="h-7 text-xs w-20 mx-auto"
-                    placeholder="סנן..."
-                    value={filters[y] || ""}
-                    onChange={(e) => updateFilter(y, e.target.value)}
-                  />
-                </TableHead>
-              ))}
+              <TableHead>
+                <Input className="h-7 text-xs" placeholder="סנן..." value={filters.notes || ""} onChange={(e) => updateFilter("notes", e.target.value)} />
+              </TableHead>
+              <TableHead>
+                <Input className="h-7 text-xs w-20 mx-auto" placeholder="סנן..." value={filters[currentYear] || ""} onChange={(e) => updateFilter(currentYear, e.target.value)} />
+              </TableHead>
+              <TableHead />
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((donor) => (
-              <TableRow
-                key={donor.id}
-                className="hover:bg-muted/30 cursor-pointer"
-                onClick={() => setEditDonor({ ...donor, donations: { ...donor.donations } })}
-              >
+              <TableRow key={donor.id} className="hover:bg-muted/30">
                 <TableCell className="font-mono text-muted-foreground">{donor.id}</TableCell>
+                <TableCell>{donor.title}</TableCell>
                 <TableCell className="font-medium">{donor.full_name}</TableCell>
+                <TableCell>{donor.father_name}</TableCell>
                 <TableCell dir="ltr" className="text-left">{donor.phone}</TableCell>
                 <TableCell>{donor.city}</TableCell>
                 <TableCell>{donor.address}</TableCell>
+                <TableCell>{donor.floor}</TableCell>
                 <TableCell className="text-sm max-w-[180px] truncate">{donor.notes || "—"}</TableCell>
-                {yearsList.map((y) => (
-                  <TableCell key={y} className="text-center">
-                    {donor.donations[y] ? `₪${donor.donations[y].toLocaleString()}` : "—"}
-                  </TableCell>
-                ))}
+                <TableCell className="text-center">
+                  {donor.donations[currentYear] ? `₪${donor.donations[currentYear].toLocaleString()}` : "—"}
+                </TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={(e) => { e.stopPropagation(); handleDelete(donor.id); }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {previousYears.length > 0 && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setHistoryId(donor.id)} title="היסטוריה">
+                      <History className="h-4 w-4" />
+                    </Button>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setEditDonor({ ...donor, donations: { ...donor.donations } })}>
+                        <Pencil className="h-4 w-4 ml-2" /> עריכה
+                      </DropdownMenuItem>
+                      <DropdownMenuItem disabled>
+                        <Archive className="h-4 w-4 ml-2" /> העברה לארכיון
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(donor.id)}>
+                        <Trash2 className="h-4 w-4 ml-2" /> מחיקה
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7 + yearsList.length} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={columnFields.length + 5} className="text-center py-8 text-muted-foreground">
                   לא נמצאו תורמים
                 </TableCell>
               </TableRow>
@@ -176,12 +199,43 @@ export default function DonorManagement() {
 
       <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
         <span>סה״כ תורמים: {filtered.length}</span>
-        {yearsList.map((y) => (
-          <span key={y}>
-            | סה״כ {y}: <span className="font-semibold text-foreground">₪{totals[y]?.toLocaleString()}</span>
-          </span>
-        ))}
+        <span>| סה״כ {currentYear}: <span className="font-semibold text-foreground">₪{currentYearTotal.toLocaleString()}</span></span>
       </div>
+
+      {/* History Dialog */}
+      <Dialog open={!!historyDonor} onOpenChange={(open) => !open && setHistoryId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>היסטוריית תרומות - {historyDonor?.full_name}</DialogTitle>
+          </DialogHeader>
+          {historyDonor && (
+            <div className="space-y-2">
+              {yearsList.map((y) => (
+                <div key={y} className="flex justify-between items-center py-1 border-b last:border-0">
+                  <span className="font-medium">{y}</span>
+                  <span>{historyDonor.donations[y] ? `₪${historyDonor.donations[y].toLocaleString()}` : "—"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>האם אתה בטוח שברצונך למחוק?</AlertDialogTitle>
+            <AlertDialogDescription>פעולה זו אינה ניתנת לביטול. התורם יימחק לצמיתות.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              מחק
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit Dialog */}
       <Dialog open={!!editDonor} onOpenChange={(open) => !open && setEditDonor(null)}>
@@ -191,23 +245,48 @@ export default function DonorManagement() {
           </DialogHeader>
           {editDonor && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>שם מלא</Label>
-                <Input value={editDonor.full_name} onChange={(e) => setEditDonor({ ...editDonor, full_name: e.target.value })} />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>תואר</Label>
+                  <Select value={editDonor.title} onValueChange={(v) => setEditDonor({ ...editDonor, title: v })}>
+                    <SelectTrigger><SelectValue placeholder="בחר תואר" /></SelectTrigger>
+                    <SelectContent>
+                      {TITLE_OPTIONS.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>שם מלא</Label>
+                  <Input value={editDonor.full_name} onChange={(e) => setEditDonor({ ...editDonor, full_name: e.target.value })} />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>שם האב</Label>
+                  <Input value={editDonor.father_name} onChange={(e) => setEditDonor({ ...editDonor, father_name: e.target.value })} />
+                </div>
                 <div className="space-y-2">
                   <Label>טלפון</Label>
                   <Input value={editDonor.phone} onChange={(e) => setEditDonor({ ...editDonor, phone: e.target.value })} />
                 </div>
-                <div className="space-y-2">
-                  <Label>עיר</Label>
-                  <Input value={editDonor.city} onChange={(e) => setEditDonor({ ...editDonor, city: e.target.value })} />
-                </div>
               </div>
-              <div className="space-y-2">
-                <Label>כתובת</Label>
-                <Input value={editDonor.address} onChange={(e) => setEditDonor({ ...editDonor, address: e.target.value })} />
+              <AddressFields
+                city={editDonor.city}
+                address={editDonor.address}
+                floor={editDonor.floor}
+                onCityChange={(v) => setEditDonor({ ...editDonor, city: v, address: "" })}
+                onAddressChange={(v) => setEditDonor({ ...editDonor, address: v })}
+                onFloorChange={(v) => setEditDonor({ ...editDonor, floor: v })}
+              />
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="edit_is_new"
+                  checked={editDonor.is_new}
+                  onCheckedChange={(v) => setEditDonor({ ...editDonor, is_new: !!v })}
+                />
+                <Label htmlFor="edit_is_new">תורם חדש</Label>
               </div>
               <div className="space-y-2">
                 <Label>הערות</Label>

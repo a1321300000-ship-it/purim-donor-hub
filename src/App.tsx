@@ -7,6 +7,8 @@ import { Layout } from "@/components/Layout";
 import DonorManagement from "@/pages/DonorManagement";
 import AddDonor from "@/pages/AddDonor";
 import DataSettings from "@/pages/DataSettings";
+import BachurimList from "@/pages/BachurimList";
+import BachurimAssign from "@/pages/BachurimAssign";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +24,8 @@ const App = () => (
             <Route path="/" element={<DonorManagement />} />
             <Route path="/add-donor" element={<AddDonor />} />
             <Route path="/data-settings" element={<DataSettings />} />
+            <Route path="/bachurim" element={<BachurimList />} />
+            <Route path="/bachurim-assign" element={<BachurimAssign />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
