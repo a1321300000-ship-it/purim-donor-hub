@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AddressFields } from "@/components/AddressFields";
-import { MoreHorizontal, Pencil, Archive, Trash2, History } from "lucide-react";
+import { MoreHorizontal, Pencil, Archive, Trash2, History, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 export default function DonorManagement() {
@@ -101,6 +101,9 @@ export default function DonorManagement() {
   );
 
   const historyDonor = historyId !== null ? donors.find((d) => d.id === historyId) : null;
+  const historyYearsWithData = historyDonor
+    ? yearsList.filter((y) => historyDonor.donations[y] && historyDonor.donations[y] > 0)
+    : [];
 
   if (isLoading) {
     return <div className="text-center py-12 text-muted-foreground">טוען נתונים...</div>;
@@ -111,21 +114,23 @@ export default function DonorManagement() {
       <div className="border rounded-lg overflow-auto bg-card">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="text-right font-semibold w-12">מזהה</TableHead>
+            <TableRow className="bg-primary text-primary-foreground">
+              <TableHead className="text-right font-semibold w-12 text-primary-foreground">מזהה</TableHead>
               {columnFields.map((key) => (
-                <TableHead key={key} className="text-right font-semibold">
+                <TableHead key={key} className="text-right font-semibold text-primary-foreground">
                   {columnLabels[key]}
                 </TableHead>
               ))}
-              <TableHead className="text-right font-semibold">הערות</TableHead>
-              <TableHead className="text-center font-semibold min-w-[100px]">
+              <TableHead className="text-center font-semibold min-w-[100px] text-primary-foreground">
                 תרומות {currentYear}
+              </TableHead>
+              <TableHead className="text-right font-semibold text-primary-foreground">
+                הערות {currentYear}
               </TableHead>
               <TableHead className="w-10" />
               <TableHead className="w-10" />
             </TableRow>
-            <TableRow className="bg-muted/20">
+            <TableRow className="bg-muted/30">
               <TableHead />
               {columnFields.map((key) => (
                 <TableHead key={key}>
@@ -133,30 +138,35 @@ export default function DonorManagement() {
                 </TableHead>
               ))}
               <TableHead>
-                <Input className="h-7 text-xs" placeholder="סנן..." value={filters.notes || ""} onChange={(e) => updateFilter("notes", e.target.value)} />
+                <Input className="h-7 text-xs w-20 mx-auto" placeholder="סנן..." value={filters[currentYear] || ""} onChange={(e) => updateFilter(currentYear, e.target.value)} />
               </TableHead>
               <TableHead>
-                <Input className="h-7 text-xs w-20 mx-auto" placeholder="סנן..." value={filters[currentYear] || ""} onChange={(e) => updateFilter(currentYear, e.target.value)} />
+                <Input className="h-7 text-xs" placeholder="סנן..." value={filters.notes || ""} onChange={(e) => updateFilter("notes", e.target.value)} />
               </TableHead>
               <TableHead />
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((donor) => (
-              <TableRow key={donor.id} className="hover:bg-muted/30">
+            {filtered.map((donor, idx) => (
+              <TableRow key={donor.id} className={idx % 2 === 0 ? "bg-card" : "bg-muted/20"}>
                 <TableCell className="font-mono text-muted-foreground">{donor.id}</TableCell>
                 <TableCell>{donor.title}</TableCell>
-                <TableCell className="font-medium">{donor.full_name}</TableCell>
+                <TableCell className="font-medium">
+                  <span className="flex items-center gap-1">
+                    {donor.is_new && <Sparkles className="h-4 w-4 text-gold shrink-0" />}
+                    {donor.full_name}
+                  </span>
+                </TableCell>
                 <TableCell>{donor.father_name}</TableCell>
                 <TableCell dir="ltr" className="text-left">{donor.phone}</TableCell>
                 <TableCell>{donor.city}</TableCell>
                 <TableCell>{donor.address}</TableCell>
                 <TableCell>{donor.floor}</TableCell>
-                <TableCell className="text-sm max-w-[180px] truncate">{donor.notes || "—"}</TableCell>
                 <TableCell className="text-center">
                   {donor.donations[currentYear] ? `₪${donor.donations[currentYear].toLocaleString()}` : "—"}
                 </TableCell>
+                <TableCell className="text-sm max-w-[180px] truncate">{donor.notes || "—"}</TableCell>
                 <TableCell>
                   {previousYears.length > 0 && (
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setHistoryId(donor.id)} title="היסטוריה">
@@ -209,13 +219,22 @@ export default function DonorManagement() {
             <DialogTitle>היסטוריית תרומות - {historyDonor?.full_name}</DialogTitle>
           </DialogHeader>
           {historyDonor && (
-            <div className="space-y-2">
-              {yearsList.map((y) => (
-                <div key={y} className="flex justify-between items-center py-1 border-b last:border-0">
-                  <span className="font-medium">{y}</span>
-                  <span>{historyDonor.donations[y] ? `₪${historyDonor.donations[y].toLocaleString()}` : "—"}</span>
-                </div>
-              ))}
+            <div className="space-y-3">
+              {historyYearsWithData.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">אין תרומות קודמות</p>
+              ) : (
+                historyYearsWithData.map((y) => (
+                  <div key={y} className="border rounded-lg p-3 space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-primary">{y}</span>
+                      <span className="font-medium">₪{historyDonor.donations[y]?.toLocaleString()}</span>
+                    </div>
+                    {historyDonor.notes && y === currentYear && (
+                      <p className="text-sm text-muted-foreground">{historyDonor.notes}</p>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           )}
         </DialogContent>
