@@ -80,7 +80,7 @@ export default function DonorManagement() {
   const columnFields = ["title", "full_name", "father_name", "phone", "city", "address", "floor"] as const;
   const columnLabels: Record<string, string> = {
     title: "תואר", full_name: "שם מלא", father_name: "שם האב", phone: "טלפון",
-    city: "עיר", address: "כתובת", floor: "קומה",
+    city: "עיר", address: "כתובת", floor: "קומה", notes: "הערות",
   };
 
   const filtered = useMemo(() => {
@@ -121,11 +121,11 @@ export default function DonorManagement() {
                   {columnLabels[key]}
                 </TableHead>
               ))}
+              <TableHead className="text-right font-semibold text-primary-foreground">
+                הערות
+              </TableHead>
               <TableHead className="text-center font-semibold min-w-[100px] text-primary-foreground">
                 תרומות {currentYear}
-              </TableHead>
-              <TableHead className="text-right font-semibold text-primary-foreground">
-                הערות {currentYear}
               </TableHead>
               <TableHead className="w-10" />
               <TableHead className="w-10" />
@@ -138,10 +138,10 @@ export default function DonorManagement() {
                 </TableHead>
               ))}
               <TableHead>
-                <Input className="h-7 text-xs w-20 mx-auto" placeholder="סנן..." value={filters[currentYear] || ""} onChange={(e) => updateFilter(currentYear, e.target.value)} />
+                <Input className="h-7 text-xs" placeholder="סנן..." value={filters.notes || ""} onChange={(e) => updateFilter("notes", e.target.value)} />
               </TableHead>
               <TableHead>
-                <Input className="h-7 text-xs" placeholder="סנן..." value={filters.notes || ""} onChange={(e) => updateFilter("notes", e.target.value)} />
+                <Input className="h-7 text-xs w-20 mx-auto" placeholder="סנן..." value={filters[currentYear] || ""} onChange={(e) => updateFilter(currentYear, e.target.value)} />
               </TableHead>
               <TableHead />
               <TableHead />
@@ -163,10 +163,10 @@ export default function DonorManagement() {
                 <TableCell>{donor.city}</TableCell>
                 <TableCell>{donor.address}</TableCell>
                 <TableCell>{donor.floor}</TableCell>
+                <TableCell className="text-sm max-w-[180px] truncate">{donor.notes || "—"}</TableCell>
                 <TableCell className="text-center">
                   {donor.donations[currentYear] ? `₪${donor.donations[currentYear].toLocaleString()}` : "—"}
                 </TableCell>
-                <TableCell className="text-sm max-w-[180px] truncate">{donor.notes || "—"}</TableCell>
                 <TableCell>
                   {previousYears.length > 0 && (
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setHistoryId(donor.id)} title="היסטוריה">
