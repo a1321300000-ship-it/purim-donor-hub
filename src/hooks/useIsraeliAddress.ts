@@ -1,60 +1,55 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
-const DATA_GOV_BASE = "https://data.gov.il/api/3/action/datastore_search";
-const CITIES_RESOURCE = "d490196b-bd83-4240-bc1a-563d7e2f1831";
-const STREETS_RESOURCE = "a7296d5b-f6f1-4366-b930-bc351616edcc";
-
-interface CityOption {
+interface Option {
   label: string;
   value: string;
 }
 
-interface StreetOption {
-  label: string;
-  value: string;
+let citiesCache: string[] | null = null;
+let streetsCache: Record<string, string[]> | null = null;
+
+async function loadCities(): Promise<string[]> {
+  if (citiesCache) return citiesCache;
+  const res = await fetch("/data/cities.json");
+  citiesCache = await res.json();
+  return citiesCache!;
+}
+
+async function loadStreets(): Promise<Record<string, string[]>> {
+  if (streetsCache) return streetsCache;
+  const res = await fetch("/data/streets.json");
+  streetsCache = await res.json();
+  return streetsCache!;
 }
 
 export function useCities(search: string) {
-  const [cities, setCities] = useState<CityOption[]>([]);
+  const [cities, setCities] = useState<Option[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!search || search.length < 2) {
+    if (!search || search.length < 1) {
       setCities([]);
       return;
     }
-
-    const controller = new AbortController();
+    let cancelled = false;
     setLoading(true);
-
-    const url = `${DATA_GOV_BASE}?resource_id=${CITIES_RESOURCE}&q=${encodeURIComponent(search)}&limit=30`;
-    
-    fetch(url, { signal: controller.signal })
-      .then((r) => r.json())
-      .then((data) => {
-        const records = data?.result?.records || [];
-        const unique = new Set<string>();
-        const opts: CityOption[] = [];
-        for (const r of records) {
-          const name = (r["שם_ישוב"] || "").trim();
-          if (name && !unique.has(name)) {
-            unique.add(name);
-            opts.push({ label: name, value: name });
-          }
-        }
-        setCities(opts);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-
-    return () => controller.abort();
+    loadCities().then((all) => {
+      if (cancelled) return;
+      const filtered = all
+        .filter((c) => c.includes(search))
+        .slice(0, 30)
+        .map((c) => ({ label: c, value: c }));
+      setCities(filtered);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
   }, [search]);
 
   return { cities, loading };
 }
 
 export function useStreets(city: string, search: string) {
-  const [streets, setStreets] = useState<StreetOption[]>([]);
+  const [streets, setStreets] = useState<Option[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -62,35 +57,19 @@ export function useStreets(city: string, search: string) {
       setStreets([]);
       return;
     }
-
-    const controller = new AbortController();
+    let cancelled = false;
     setLoading(true);
-
-    const filters = JSON.stringify({ "שם_ישוב": city });
-    let url = `${DATA_GOV_BASE}?resource_id=${STREETS_RESOURCE}&filters=${encodeURIComponent(filters)}&limit=100`;
-    if (search && search.length >= 1) {
-      url += `&q=${encodeURIComponent(search)}`;
-    }
-
-    fetch(url, { signal: controller.signal })
-      .then((r) => r.json())
-      .then((data) => {
-        const records = data?.result?.records || [];
-        const unique = new Set<string>();
-        const opts: StreetOption[] = [];
-        for (const r of records) {
-          const name = (r["שם_רחוב"] || "").trim();
-          if (name && !unique.has(name)) {
-            unique.add(name);
-            opts.push({ label: name, value: name });
-          }
-        }
-        setStreets(opts);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-
-    return () => controller.abort();
+    loadStreets().then((all) => {
+      if (cancelled) return;
+      const cityStreets = all[city] || [];
+      const filtered = cityStreets
+        .filter((s) => !search || s.includes(search))
+        .slice(0, 50)
+        .map((s) => ({ label: s, value: s }));
+      setStreets(filtered);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
   }, [city, search]);
 
   return { streets, loading };
