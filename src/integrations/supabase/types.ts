@@ -26,8 +26,10 @@ export type Database = {
           is_new: boolean
           notes: string
           phone: string
+          shiur: string
           title: string
           updated_at: string
+          yeshiva: string
         }
         Insert: {
           address?: string
@@ -40,8 +42,10 @@ export type Database = {
           is_new?: boolean
           notes?: string
           phone?: string
+          shiur?: string
           title?: string
           updated_at?: string
+          yeshiva?: string
         }
         Update: {
           address?: string
@@ -54,8 +58,10 @@ export type Database = {
           is_new?: boolean
           notes?: string
           phone?: string
+          shiur?: string
           title?: string
           updated_at?: string
+          yeshiva?: string
         }
         Relationships: []
       }
@@ -64,6 +70,7 @@ export type Database = {
           address: string
           city: string
           created_at: string
+          donation_notes: Json
           donations: Json
           father_name: string
           floor: string
@@ -79,6 +86,7 @@ export type Database = {
           address?: string
           city?: string
           created_at?: string
+          donation_notes?: Json
           donations?: Json
           father_name?: string
           floor?: string
@@ -94,6 +102,7 @@ export type Database = {
           address?: string
           city?: string
           created_at?: string
+          donation_notes?: Json
           donations?: Json
           father_name?: string
           floor?: string
@@ -104,6 +113,30 @@ export type Database = {
           phone?: string
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      select_options: {
+        Row: {
+          created_at: string
+          id: string
+          list_name: string
+          sort_order: number
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          list_name: string
+          sort_order?: number
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          list_name?: string
+          sort_order?: number
+          value?: string
         }
         Relationships: []
       }
