@@ -30,6 +30,7 @@ export default function AddDonor() {
     is_new: true,
     notes: "",
     donations: {} as Record<string, number>,
+    donation_notes: {} as Record<string, string>,
   });
 
   const set = (field: string, value: any) =>
@@ -39,6 +40,12 @@ export default function AddDonor() {
     setForm((prev) => ({
       ...prev,
       donations: { ...prev.donations, [year]: value === "" ? 0 : Number(value) },
+    }));
+
+  const setDonationNote = (year: string, value: string) =>
+    setForm((prev) => ({
+      ...prev,
+      donation_notes: { ...prev.donation_notes, [year]: value },
     }));
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -116,16 +123,26 @@ export default function AddDonor() {
               <Textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="הערות חופשיות..." />
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-3">
               {yearsList.map((y) => (
-                <div key={y} className="space-y-1">
-                  <Label>תרומות {y}</Label>
-                  <Input
-                    type="number"
-                    value={form.donations[y] || ""}
-                    onChange={(e) => setDonation(y, e.target.value)}
-                    placeholder="₪0"
-                  />
+                <div key={y} className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>תרומות {y}</Label>
+                    <Input
+                      type="number"
+                      value={form.donations[y] || ""}
+                      onChange={(e) => setDonation(y, e.target.value)}
+                      placeholder="₪0"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>הערות {y}</Label>
+                    <Input
+                      value={form.donation_notes[y] || ""}
+                      onChange={(e) => setDonationNote(y, e.target.value)}
+                      placeholder="הערה..."
+                    />
+                  </div>
                 </div>
               ))}
             </div>

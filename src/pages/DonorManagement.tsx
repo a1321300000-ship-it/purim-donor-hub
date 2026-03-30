@@ -66,6 +66,7 @@ export default function DonorManagement() {
           is_new: editDonor.is_new,
           notes: editDonor.notes,
           donations: editDonor.donations,
+          donation_notes: editDonor.donation_notes,
         },
       },
       {
@@ -121,11 +122,12 @@ export default function DonorManagement() {
                   {columnLabels[key]}
                 </TableHead>
               ))}
-              <TableHead className="text-right font-semibold text-primary-foreground">
-                הערות
-              </TableHead>
+              <TableHead className="text-right font-semibold text-primary-foreground">הערות</TableHead>
               <TableHead className="text-center font-semibold min-w-[100px] text-primary-foreground">
                 תרומות {currentYear}
+              </TableHead>
+              <TableHead className="text-right font-semibold text-primary-foreground min-w-[120px]">
+                הערות {currentYear}
               </TableHead>
               <TableHead className="w-10" />
               <TableHead className="w-10" />
@@ -143,6 +145,7 @@ export default function DonorManagement() {
               <TableHead>
                 <Input className="h-7 text-xs w-20 mx-auto" placeholder="סנן..." value={filters[currentYear] || ""} onChange={(e) => updateFilter(currentYear, e.target.value)} />
               </TableHead>
+              <TableHead />
               <TableHead />
               <TableHead />
             </TableRow>
@@ -167,6 +170,9 @@ export default function DonorManagement() {
                 <TableCell className="text-center">
                   {donor.donations[currentYear] ? `₪${donor.donations[currentYear].toLocaleString()}` : "—"}
                 </TableCell>
+                <TableCell className="text-sm max-w-[140px] truncate">
+                  {donor.donation_notes?.[currentYear] || "—"}
+                </TableCell>
                 <TableCell>
                   {previousYears.length > 0 && (
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setHistoryId(donor.id)} title="היסטוריה">
@@ -182,7 +188,7 @@ export default function DonorManagement() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditDonor({ ...donor, donations: { ...donor.donations } })}>
+                      <DropdownMenuItem onClick={() => setEditDonor({ ...donor, donations: { ...donor.donations }, donation_notes: { ...donor.donation_notes } })}>
                         <Pencil className="h-4 w-4 ml-2" /> עריכה
                       </DropdownMenuItem>
                       <DropdownMenuItem disabled>
@@ -198,7 +204,7 @@ export default function DonorManagement() {
             ))}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={columnFields.length + 5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={columnFields.length + 6} className="text-center py-8 text-muted-foreground">
                   לא נמצאו תורמים
                 </TableCell>
               </TableRow>
@@ -212,7 +218,7 @@ export default function DonorManagement() {
         <span>| סה״כ {currentYear}: <span className="font-semibold text-foreground">₪{currentYearTotal.toLocaleString()}</span></span>
       </div>
 
-      {/* History Dialog */}
+      {/* History Dialog - shows per-year amount + note */}
       <Dialog open={!!historyDonor} onOpenChange={(open) => !open && setHistoryId(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -229,8 +235,8 @@ export default function DonorManagement() {
                       <span className="font-semibold text-primary">{y}</span>
                       <span className="font-medium">₪{historyDonor.donations[y]?.toLocaleString()}</span>
                     </div>
-                    {historyDonor.notes && y === currentYear && (
-                      <p className="text-sm text-muted-foreground">{historyDonor.notes}</p>
+                    {historyDonor.donation_notes?.[y] && (
+                      <p className="text-sm text-muted-foreground">{historyDonor.donation_notes[y]}</p>
                     )}
                   </div>
                 ))
@@ -256,9 +262,9 @@ export default function DonorManagement() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Edit Dialog */}
+      {/* Edit Dialog - includes per-year donation notes */}
       <Dialog open={!!editDonor} onOpenChange={(open) => !open && setEditDonor(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>עריכת תורם #{editDonor?.id}</DialogTitle>
           </DialogHeader>
@@ -308,22 +314,35 @@ export default function DonorManagement() {
                 <Label htmlFor="edit_is_new">תורם חדש</Label>
               </div>
               <div className="space-y-2">
-                <Label>הערות</Label>
+                <Label>הערות כלליות</Label>
                 <Textarea value={editDonor.notes} onChange={(e) => setEditDonor({ ...editDonor, notes: e.target.value })} />
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-3">
                 {yearsList.map((y) => (
-                  <div key={y} className="space-y-1">
-                    <Label>תרומות {y}</Label>
-                    <Input
-                      type="number"
-                      value={editDonor.donations[y] || ""}
-                      onChange={(e) => setEditDonor({
-                        ...editDonor,
-                        donations: { ...editDonor.donations, [y]: e.target.value === "" ? 0 : Number(e.target.value) },
-                      })}
-                      placeholder="₪0"
-                    />
+                  <div key={y} className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label>תרומות {y}</Label>
+                      <Input
+                        type="number"
+                        value={editDonor.donations[y] || ""}
+                        onChange={(e) => setEditDonor({
+                          ...editDonor,
+                          donations: { ...editDonor.donations, [y]: e.target.value === "" ? 0 : Number(e.target.value) },
+                        })}
+                        placeholder="₪0"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>הערות {y}</Label>
+                      <Input
+                        value={editDonor.donation_notes?.[y] || ""}
+                        onChange={(e) => setEditDonor({
+                          ...editDonor,
+                          donation_notes: { ...editDonor.donation_notes, [y]: e.target.value },
+                        })}
+                        placeholder="הערה..."
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
