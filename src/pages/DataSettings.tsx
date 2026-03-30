@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useSettings, useSaveSetting } from "@/hooks/useSettings";
 import { useDonors, useAddDonorsBatch } from "@/hooks/useDonors";
-import { getDonorFields, Donor } from "@/lib/store";
+import { useBachurim, useAddBachurimBatch } from "@/hooks/useBachurim";
+import { getDonorFields, getBachurFields, Donor, Bachur } from "@/lib/store";
+import { ListManager } from "@/components/ListManager";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,16 +15,14 @@ import * as XLSX from "xlsx";
 
 type ColumnMapping = Record<string, string>;
 
-// Generate Hebrew years from תשס"ב to 30 years ahead
 function generateAllHebrewYears(): string[] {
-  const base = [
+  return [
     'תשס"ב', 'תשס"ג', 'תשס"ד', 'תשס"ה', 'תשס"ו', 'תשס"ז', 'תשס"ח', 'תשס"ט',
     'תש"ע', 'תשע"א', 'תשע"ב', 'תשע"ג', 'תשע"ד', 'תשע"ה', 'תשע"ו', 'תשע"ז', 'תשע"ח', 'תשע"ט',
     'תש"פ', 'תשפ"א', 'תשפ"ב', 'תשפ"ג', 'תשפ"ד', 'תשפ"ה', 'תשפ"ו', 'תשפ"ז', 'תשפ"ח', 'תשפ"ט',
     'תש"צ', 'תשצ"א', 'תשצ"ב', 'תשצ"ג', 'תשצ"ד', 'תשצ"ה', 'תשצ"ו', 'תשצ"ז', 'תשצ"ח', 'תשצ"ט',
     'ת"ת', 'תת"א', 'תת"ב', 'תת"ג', 'תת"ד', 'תת"ה',
   ];
-  return base;
 }
 
 const HEBREW_YEARS = generateAllHebrewYears();
@@ -77,13 +77,16 @@ function parseFile(file: File): Promise<{ columns: string[]; rows: Record<string
 export default function DataSettings() {
   const { data: settings, isLoading: settingsLoading } = useSettings();
   const { data: donors = [] } = useDonors();
+  const { data: bachurim = [] } = useBachurim();
   const saveSetting = useSaveSetting();
-  const addBatch = useAddDonorsBatch();
+  const addDonorsBatch = useAddDonorsBatch();
+  const addBachurimBatch = useAddBachurimBatch();
 
   const yearsList = settings?.years_list || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'];
   const currentYear = settings?.current_year || 'תשפ"ה';
   const yearCount = settings?.year_count || 3;
   const DONOR_FIELDS = getDonorFields(yearsList);
+  const BACHUR_FIELDS = getBachurFields();
 
   const [importTarget, setImportTarget] = useState("donors");
   const [exportTarget, setExportTarget] = useState("donors");
@@ -94,9 +97,12 @@ export default function DataSettings() {
   const [exportFormat, setExportFormat] = useState<"xlsx" | "csv">("xlsx");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const activeFields = exportTarget === "donors" ? DONOR_FIELDS : BACHUR_FIELDS;
+  const importFields = importTarget === "donors" ? DONOR_FIELDS : BACHUR_FIELDS;
+
   useEffect(() => {
-    setExportFields(DONOR_FIELDS.map((f) => f.key));
-  }, [yearsList.join(",")]);
+    setExportFields(activeFields.map((f) => f.key));
+  }, [exportTarget, yearsList.join(",")]);
 
   const handleYearChange = async (newYear: string) => {
     const newList = generateYearsList(newYear, yearCount);
@@ -121,7 +127,7 @@ export default function DataSettings() {
       setFileData(rows);
       const autoMap: ColumnMapping = {};
       columns.forEach((col) => {
-        const match = DONOR_FIELDS.find((f) => f.label === col || f.key === col);
+        const match = importFields.find((f) => f.label === col || f.key === col);
         if (match) autoMap[col] = match.key;
       });
       setMapping(autoMap);
@@ -134,42 +140,67 @@ export default function DataSettings() {
 
   const handleImport = () => {
     if (fileData.length === 0) return;
-    const newDonors: Omit<Donor, "id" | "created_at" | "updated_at">[] = fileData.map((row) => {
-      const d: Omit<Donor, "id" | "created_at" | "updated_at"> = {
-        title: "", full_name: "", father_name: "", phone: "", city: "", address: "", floor: "", is_new: true, notes: "", donations: {}, donation_notes: {},
-      };
-      Object.entries(mapping).forEach(([fileCol, fieldKey]) => {
-        const val = row[fileCol] || "";
-        if (yearsList.includes(fieldKey)) {
-          d.donations[fieldKey] = Number(val) || 0;
-        } else if (fieldKey === "is_new") {
-          d.is_new = val === "true" || val === "1" || val === "כן";
-        } else if (fieldKey !== "id" && fieldKey in d) {
-          (d as any)[fieldKey] = val;
-        }
+
+    if (importTarget === "donors") {
+      const newDonors: Omit<Donor, "id" | "created_at" | "updated_at">[] = fileData.map((row) => {
+        const d: Omit<Donor, "id" | "created_at" | "updated_at"> = {
+          title: "", full_name: "", father_name: "", phone: "", city: "", address: "", floor: "", is_new: true, notes: "", donations: {}, donation_notes: {},
+        };
+        Object.entries(mapping).forEach(([fileCol, fieldKey]) => {
+          const val = row[fileCol] || "";
+          if (yearsList.includes(fieldKey)) {
+            d.donations[fieldKey] = Number(val) || 0;
+          } else if (fieldKey === "is_new") {
+            d.is_new = val === "true" || val === "1" || val === "כן";
+          } else if (fieldKey !== "id" && fieldKey in d) {
+            (d as any)[fieldKey] = val;
+          }
+        });
+        return d;
       });
-      return d;
-    });
-    addBatch.mutate(newDonors, {
-      onSuccess: () => {
-        setFileData([]);
-        setFileColumns([]);
-        setMapping({});
-        toast.success(`${newDonors.length} תורמים יובאו בהצלחה`);
-      },
-      onError: () => toast.error("שגיאה ביבוא הנתונים"),
-    });
+      addDonorsBatch.mutate(newDonors, {
+        onSuccess: () => { clearImport(); toast.success(`${newDonors.length} תורמים יובאו בהצלחה`); },
+        onError: () => toast.error("שגיאה ביבוא הנתונים"),
+      });
+    } else {
+      const newBachurim: Omit<Bachur, "id" | "created_at" | "updated_at">[] = fileData.map((row) => {
+        const b: Omit<Bachur, "id" | "created_at" | "updated_at"> = {
+          title: "", full_name: "", father_name: "", phone: "", city: "", address: "", floor: "", is_new: true, notes: "", yeshiva: "", shiur: "",
+        };
+        Object.entries(mapping).forEach(([fileCol, fieldKey]) => {
+          const val = row[fileCol] || "";
+          if (fieldKey === "is_new") {
+            b.is_new = val === "true" || val === "1" || val === "כן";
+          } else if (fieldKey !== "id" && fieldKey in b) {
+            (b as any)[fieldKey] = val;
+          }
+        });
+        return b;
+      });
+      addBachurimBatch.mutate(newBachurim, {
+        onSuccess: () => { clearImport(); toast.success(`${newBachurim.length} בחורים יובאו בהצלחה`); },
+        onError: () => toast.error("שגיאה ביבוא הנתונים"),
+      });
+    }
+  };
+
+  const clearImport = () => {
+    setFileData([]);
+    setFileColumns([]);
+    setMapping({});
   };
 
   const handleExport = () => {
-    const headers = DONOR_FIELDS.filter((f) => exportFields.includes(f.key));
-    const rows = donors.map((d) => {
+    const headers = activeFields.filter((f) => exportFields.includes(f.key));
+    const sourceData = exportTarget === "donors" ? donors : bachurim;
+
+    const rows = sourceData.map((item) => {
       const row: Record<string, string | number | boolean> = {};
       headers.forEach((h) => {
-        if (yearsList.includes(h.key)) {
-          row[h.label] = d.donations[h.key] || 0;
+        if (exportTarget === "donors" && yearsList.includes(h.key)) {
+          row[h.label] = (item as Donor).donations[h.key] || 0;
         } else {
-          row[h.label] = (d as any)[h.key] ?? "";
+          row[h.label] = (item as any)[h.key] ?? "";
         }
       });
       return row;
@@ -186,10 +217,10 @@ export default function DataSettings() {
     } else {
       const csvRows = [
         headers.map((h) => h.label).join(","),
-        ...donors.map((d) =>
+        ...sourceData.map((item) =>
           headers.map((h) => {
-            if (yearsList.includes(h.key)) return d.donations[h.key] || 0;
-            return `"${(d as any)[h.key] ?? ""}"`;
+            if (exportTarget === "donors" && yearsList.includes(h.key)) return (item as Donor).donations[h.key] || 0;
+            return `"${(item as any)[h.key] ?? ""}"`;
           }).join(",")
         ),
       ];
@@ -228,9 +259,7 @@ export default function DataSettings() {
             <div className="space-y-2">
               <Label>שנה נוכחית</Label>
               <Select value={currentYear} onValueChange={handleYearChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {HEBREW_YEARS.map((y) => (
                     <SelectItem key={y} value={y}>{y}</SelectItem>
@@ -241,9 +270,7 @@ export default function DataSettings() {
             <div className="space-y-2">
               <Label>כמות שנים להצגה</Label>
               <Select value={String(yearCount)} onValueChange={(v) => handleYearCountChange(Number(v))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {[2, 3, 4, 5, 6].map((n) => (
                     <SelectItem key={n} value={String(n)}>{n} שנים</SelectItem>
@@ -258,6 +285,9 @@ export default function DataSettings() {
         </CardContent>
       </Card>
 
+      {/* List Manager */}
+      <ListManager />
+
       {/* Import */}
       <Card>
         <CardHeader>
@@ -270,13 +300,11 @@ export default function DataSettings() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>יעד יבוא</Label>
-            <Select value={importTarget} onValueChange={setImportTarget}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={importTarget} onValueChange={(v) => { setImportTarget(v); clearImport(); }}>
+              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="donors">תורמים</SelectItem>
-                <SelectItem value="bachurim" disabled>בחורים (בקרוב)</SelectItem>
+                <SelectItem value="bachurim">בחורים</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -298,20 +326,18 @@ export default function DataSettings() {
                     value={mapping[col] || "_skip"}
                     onValueChange={(v) => setMapping((prev) => ({ ...prev, [col]: v === "_skip" ? "" : v }))}
                   >
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="_skip">דלג</SelectItem>
-                      {DONOR_FIELDS.filter((f) => f.key !== "id").map((f) => (
+                      {importFields.filter((f) => f.key !== "id").map((f) => (
                         <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               ))}
-              <Button onClick={handleImport} disabled={addBatch.isPending}>
-                {addBatch.isPending ? "מייבא..." : `ייבא ${fileData.length} שורות`}
+              <Button onClick={handleImport} disabled={addDonorsBatch.isPending || addBachurimBatch.isPending}>
+                {(addDonorsBatch.isPending || addBachurimBatch.isPending) ? "מייבא..." : `ייבא ${fileData.length} שורות`}
               </Button>
             </div>
           )}
@@ -331,9 +357,7 @@ export default function DataSettings() {
           <div className="space-y-2">
             <Label>יעד יצוא</Label>
             <Select value={exportTarget} onValueChange={setExportTarget}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="donors">רשימת תורמים</SelectItem>
                 <SelectItem value="bachurim">רשימת בחורים</SelectItem>
@@ -341,7 +365,7 @@ export default function DataSettings() {
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {DONOR_FIELDS.map((f) => (
+            {activeFields.map((f) => (
               <label key={f.key} className="flex items-center gap-2 text-sm cursor-pointer">
                 <Checkbox
                   checked={exportFields.includes(f.key)}
@@ -354,9 +378,7 @@ export default function DataSettings() {
           <div className="space-y-2">
             <Label>פורמט יצוא</Label>
             <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "xlsx" | "csv")}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
                 <SelectItem value="csv">CSV</SelectItem>
