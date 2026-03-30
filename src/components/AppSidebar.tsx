@@ -1,4 +1,4 @@
-import { Users, UserPlus, GraduationCap, ChevronDown, Settings, List, UserCheck } from "lucide-react";
+import { Users, UserPlus, GraduationCap, ChevronDown, Settings, List, UserCheck, UserRoundPlus } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -15,6 +15,7 @@ const donorSubItems = [
 
 const bachurimSubItems = [
   { title: "רשימת בחורים", url: "/bachurim", icon: List },
+  { title: "הוסף בחור", url: "/add-bachur", icon: UserRoundPlus },
   { title: "שיבוץ בחורים", url: "/bachurim-assign", icon: UserCheck },
 ];
 
@@ -23,7 +24,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const isDonorSection = location.pathname === "/" || location.pathname === "/add-donor";
-  const isBachurimSection = location.pathname === "/bachurim" || location.pathname === "/bachurim-assign";
+  const isBachurimSection = location.pathname.startsWith("/bachurim") || location.pathname === "/add-bachur";
 
   return (
     <Sidebar collapsible="icon" side="right">
@@ -34,7 +35,6 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* Donors */}
               <Collapsible defaultOpen={isDonorSection} className="group/collapsible">
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
@@ -67,7 +67,6 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               </Collapsible>
 
-              {/* Bachurim */}
               <Collapsible defaultOpen={isBachurimSection} className="group/collapsible">
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
