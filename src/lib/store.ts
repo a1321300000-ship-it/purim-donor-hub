@@ -8,6 +8,7 @@ export interface Donor {
   phone: string;
   city: string;
   address: string;
+  house_number: string;
   floor: string;
   is_new: boolean;
   notes: string;
@@ -126,6 +127,7 @@ export async function getDonors(): Promise<Donor[]> {
     title: (d as any).title || "",
     father_name: (d as any).father_name || "",
     floor: (d as any).floor || "",
+    house_number: (d as any).house_number || "",
     is_new: (d as any).is_new ?? true,
     donations: (d.donations as Record<string, number>) || {},
     donation_notes: ((d as any).donation_notes as Record<string, string>) || {},
@@ -142,6 +144,7 @@ export async function addDonor(donor: Omit<Donor, "id" | "created_at" | "updated
       phone: donor.phone,
       city: donor.city,
       address: donor.address,
+      house_number: donor.house_number,
       floor: donor.floor,
       is_new: donor.is_new,
       notes: donor.notes,
@@ -184,6 +187,7 @@ export async function addDonorsBatch(donors: Omit<Donor, "id" | "created_at" | "
       phone: d.phone,
       city: d.city,
       address: d.address,
+      house_number: d.house_number || "",
       floor: d.floor || "",
       is_new: d.is_new ?? true,
       notes: d.notes,
