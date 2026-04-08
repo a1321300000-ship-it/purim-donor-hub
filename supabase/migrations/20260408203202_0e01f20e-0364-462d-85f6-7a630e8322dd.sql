@@ -1,0 +1,1 @@
+ALTER TABLE public.donors ADD COLUMN house_number text NOT NULL DEFAULT '';

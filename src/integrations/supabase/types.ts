@@ -75,6 +75,7 @@ export type Database = {
           father_name: string
           floor: string
           full_name: string
+          house_number: string
           id: number
           is_new: boolean
           notes: string
@@ -91,6 +92,7 @@ export type Database = {
           father_name?: string
           floor?: string
           full_name?: string
+          house_number?: string
           id?: never
           is_new?: boolean
           notes?: string
@@ -107,6 +109,7 @@ export type Database = {
           father_name?: string
           floor?: string
           full_name?: string
+          house_number?: string
           id?: never
           is_new?: boolean
           notes?: string
