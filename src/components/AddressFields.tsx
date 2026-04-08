@@ -35,7 +35,7 @@ export function AddressFields({ city, address, floor, onCityChange, onAddressCha
               <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-full p-0" align="start">
+          <PopoverContent className="w-full p-0 z-[200]" align="start">
             <Command>
               <CommandInput placeholder="חפש עיר..." value={citySearch} onValueChange={setCitySearch} />
               <CommandList>
@@ -62,7 +62,7 @@ export function AddressFields({ city, address, floor, onCityChange, onAddressCha
               <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-full p-0" align="start">
+          <PopoverContent className="w-full p-0 z-[200]" align="start">
             <Command>
               <CommandInput placeholder="חפש רחוב..." value={streetSearch} onValueChange={setStreetSearch} />
               <CommandList>
