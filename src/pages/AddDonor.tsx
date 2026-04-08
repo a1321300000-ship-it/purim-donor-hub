@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAddDonor } from "@/hooks/useDonors";
 import { useSettings } from "@/hooks/useSettings";
-import { TITLE_OPTIONS } from "@/lib/store";
+import { useSelectOptions } from "@/hooks/useSelectOptions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,7 @@ export default function AddDonor() {
   const navigate = useNavigate();
   const addDonor = useAddDonor();
   const { data: settings } = useSettings();
+  const { data: titleOptions = [] } = useSelectOptions("title");
   const yearsList = settings?.years_list || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'];
 
   const [form, setForm] = useState({
@@ -26,6 +27,7 @@ export default function AddDonor() {
     phone: "",
     city: "",
     address: "",
+    house_number: "",
     floor: "",
     is_new: true,
     notes: "",
@@ -77,8 +79,8 @@ export default function AddDonor() {
                 <Select value={form.title} onValueChange={(v) => set("title", v)}>
                   <SelectTrigger><SelectValue placeholder="בחר תואר" /></SelectTrigger>
                   <SelectContent>
-                    {TITLE_OPTIONS.map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    {titleOptions.map((t) => (
+                      <SelectItem key={t.id} value={t.value}>{t.value}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -108,6 +110,11 @@ export default function AddDonor() {
               onAddressChange={(v) => set("address", v)}
               onFloorChange={(v) => set("floor", v)}
             />
+
+            <div className="space-y-2">
+              <Label>מספר בית</Label>
+              <Input value={form.house_number} onChange={(e) => set("house_number", e.target.value)} placeholder="מספר בית" />
+            </div>
 
             <div className="flex items-center gap-2">
               <Checkbox

@@ -8,6 +8,7 @@ import { Plus, X, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 
 const MANAGED_LISTS = [
+  { name: "title", label: "תוארים" },
   { name: "yeshiva", label: "ישיבות" },
   { name: "shiur", label: "שיעורים" },
 ];
