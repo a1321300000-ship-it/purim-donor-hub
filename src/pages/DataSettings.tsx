@@ -144,7 +144,7 @@ export default function DataSettings() {
     if (importTarget === "donors") {
       const newDonors: Omit<Donor, "id" | "created_at" | "updated_at">[] = fileData.map((row) => {
         const d: Omit<Donor, "id" | "created_at" | "updated_at"> = {
-          title: "", full_name: "", father_name: "", phone: "", city: "", address: "", floor: "", is_new: true, notes: "", donations: {}, donation_notes: {},
+          title: "", full_name: "", father_name: "", phone: "", city: "", address: "", house_number: "", floor: "", is_new: true, notes: "", donations: {}, donation_notes: {},
         };
         Object.entries(mapping).forEach(([fileCol, fieldKey]) => {
           const val = row[fileCol] || "";
