@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { useDonors, useUpdateDonor, useDeleteDonor } from "@/hooks/useDonors";
 import { useSettings } from "@/hooks/useSettings";
-import { Donor, TITLE_OPTIONS } from "@/lib/store";
+import { useSelectOptions } from "@/hooks/useSelectOptions";
+import { Donor } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,12 +23,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AddressFields } from "@/components/AddressFields";
-import { MoreHorizontal, Pencil, Archive, Trash2, History, Sparkles } from "lucide-react";
+import { MoreHorizontal, Pencil, Archive, Trash2, History, Sparkles, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export default function DonorManagement() {
   const { data: donors = [], isLoading } = useDonors();
   const { data: settings } = useSettings();
+  const { data: titleOptions = [] } = useSelectOptions("title");
   const updateDonor = useUpdateDonor();
   const deleteDonorMut = useDeleteDonor();
 
@@ -62,6 +64,7 @@ export default function DonorManagement() {
           phone: editDonor.phone,
           city: editDonor.city,
           address: editDonor.address,
+          house_number: editDonor.house_number,
           floor: editDonor.floor,
           is_new: editDonor.is_new,
           notes: editDonor.notes,
@@ -78,10 +81,11 @@ export default function DonorManagement() {
     );
   };
 
-  const columnFields = ["title", "full_name", "father_name", "phone", "city", "address", "floor"] as const;
+  // Column order: ID > Title > Full Name > Father's Name > City > Street > House Number > Floor > Notes > Donations > Donation Notes
+  const columnFields = ["title", "full_name", "father_name", "city", "address", "house_number", "floor"] as const;
   const columnLabels: Record<string, string> = {
-    title: "תואר", full_name: "שם מלא", father_name: "שם האב", phone: "טלפון",
-    city: "עיר", address: "כתובת", floor: "קומה", notes: "הערות",
+    title: "תואר", full_name: "שם מלא", father_name: "שם האב",
+    city: "עיר", address: "רחוב", house_number: "מספר בית", floor: "קומה", notes: "הערות",
   };
 
   const filtered = useMemo(() => {
@@ -136,14 +140,23 @@ export default function DonorManagement() {
               <TableHead />
               {columnFields.map((key) => (
                 <TableHead key={key}>
-                  <Input className="h-7 text-xs" placeholder="סנן..." value={filters[key] || ""} onChange={(e) => updateFilter(key, e.target.value)} />
+                  <div className="relative">
+                    <Search className="h-3 w-3 absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input className="h-7 text-xs pr-7" value={filters[key] || ""} onChange={(e) => updateFilter(key, e.target.value)} />
+                  </div>
                 </TableHead>
               ))}
               <TableHead>
-                <Input className="h-7 text-xs" placeholder="סנן..." value={filters.notes || ""} onChange={(e) => updateFilter("notes", e.target.value)} />
+                <div className="relative">
+                  <Search className="h-3 w-3 absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input className="h-7 text-xs pr-7" value={filters.notes || ""} onChange={(e) => updateFilter("notes", e.target.value)} />
+                </div>
               </TableHead>
               <TableHead>
-                <Input className="h-7 text-xs w-20 mx-auto" placeholder="סנן..." value={filters[currentYear] || ""} onChange={(e) => updateFilter(currentYear, e.target.value)} />
+                <div className="relative">
+                  <Search className="h-3 w-3 absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input className="h-7 text-xs w-20 mx-auto pr-7" value={filters[currentYear] || ""} onChange={(e) => updateFilter(currentYear, e.target.value)} />
+                </div>
               </TableHead>
               <TableHead />
               <TableHead />
@@ -162,9 +175,9 @@ export default function DonorManagement() {
                   </span>
                 </TableCell>
                 <TableCell>{donor.father_name}</TableCell>
-                <TableCell dir="ltr" className="text-left">{donor.phone}</TableCell>
                 <TableCell>{donor.city}</TableCell>
                 <TableCell>{donor.address}</TableCell>
+                <TableCell>{donor.house_number}</TableCell>
                 <TableCell>{donor.floor}</TableCell>
                 <TableCell className="text-sm max-w-[180px] truncate">{donor.notes || "—"}</TableCell>
                 <TableCell className="text-center">
@@ -218,7 +231,7 @@ export default function DonorManagement() {
         <span>| סה״כ {currentYear}: <span className="font-semibold text-foreground">₪{currentYearTotal.toLocaleString()}</span></span>
       </div>
 
-      {/* History Dialog - shows per-year amount + note */}
+      {/* History Dialog */}
       <Dialog open={!!historyDonor} onOpenChange={(open) => !open && setHistoryId(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -262,9 +275,9 @@ export default function DonorManagement() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Edit Dialog - includes per-year donation notes */}
+      {/* Edit Dialog */}
       <Dialog open={!!editDonor} onOpenChange={(open) => !open && setEditDonor(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto z-50">
           <DialogHeader>
             <DialogTitle>עריכת תורם #{editDonor?.id}</DialogTitle>
           </DialogHeader>
@@ -275,9 +288,9 @@ export default function DonorManagement() {
                   <Label>תואר</Label>
                   <Select value={editDonor.title} onValueChange={(v) => setEditDonor({ ...editDonor, title: v })}>
                     <SelectTrigger><SelectValue placeholder="בחר תואר" /></SelectTrigger>
-                    <SelectContent>
-                      {TITLE_OPTIONS.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                    <SelectContent className="z-[200]">
+                      {titleOptions.map((t) => (
+                        <SelectItem key={t.id} value={t.value}>{t.value}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -305,6 +318,10 @@ export default function DonorManagement() {
                 onAddressChange={(v) => setEditDonor({ ...editDonor, address: v })}
                 onFloorChange={(v) => setEditDonor({ ...editDonor, floor: v })}
               />
+              <div className="space-y-2">
+                <Label>מספר בית</Label>
+                <Input value={editDonor.house_number} onChange={(e) => setEditDonor({ ...editDonor, house_number: e.target.value })} placeholder="מספר בית" />
+              </div>
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="edit_is_new"

@@ -8,6 +8,7 @@ export interface Donor {
   phone: string;
   city: string;
   address: string;
+  house_number: string;
   floor: string;
   is_new: boolean;
   notes: string;
@@ -126,6 +127,7 @@ export async function getDonors(): Promise<Donor[]> {
     title: (d as any).title || "",
     father_name: (d as any).father_name || "",
     floor: (d as any).floor || "",
+    house_number: (d as any).house_number || "",
     is_new: (d as any).is_new ?? true,
     donations: (d.donations as Record<string, number>) || {},
     donation_notes: ((d as any).donation_notes as Record<string, string>) || {},
@@ -142,6 +144,7 @@ export async function addDonor(donor: Omit<Donor, "id" | "created_at" | "updated
       phone: donor.phone,
       city: donor.city,
       address: donor.address,
+      house_number: donor.house_number,
       floor: donor.floor,
       is_new: donor.is_new,
       notes: donor.notes,
@@ -160,8 +163,8 @@ export async function addDonor(donor: Omit<Donor, "id" | "created_at" | "updated
 }
 
 export async function updateDonor(id: number, updates: Partial<Omit<Donor, "id">>): Promise<void> {
-  const payload: Record<string, any> = {};
-  const fields = ["title", "full_name", "father_name", "phone", "city", "address", "floor", "is_new", "notes", "donations", "donation_notes"];
+  const fields = ["title", "full_name", "father_name", "phone", "city", "address", "house_number", "floor", "is_new", "notes", "donations", "donation_notes"] as const;
+  const payload: any = {};
   fields.forEach((f) => {
     if ((updates as any)[f] !== undefined) payload[f] = (updates as any)[f];
   });
@@ -184,6 +187,7 @@ export async function addDonorsBatch(donors: Omit<Donor, "id" | "created_at" | "
       phone: d.phone,
       city: d.city,
       address: d.address,
+      house_number: d.house_number || "",
       floor: d.floor || "",
       is_new: d.is_new ?? true,
       notes: d.notes,
@@ -232,8 +236,8 @@ export async function addBachur(bachur: Omit<Bachur, "id" | "created_at" | "upda
 }
 
 export async function updateBachur(id: number, updates: Partial<Omit<Bachur, "id">>): Promise<void> {
-  const payload: Record<string, any> = {};
-  const fields = ["title", "full_name", "father_name", "phone", "city", "address", "floor", "is_new", "notes", "yeshiva", "shiur"];
+  const fields = ["full_name", "father_name", "notes", "yeshiva", "shiur"] as const;
+  const payload: any = {};
   fields.forEach((f) => {
     if ((updates as any)[f] !== undefined) payload[f] = (updates as any)[f];
   });
@@ -274,7 +278,8 @@ export function getDonorFields(yearsList: string[]) {
     { key: "father_name", label: "שם האב" },
     { key: "phone", label: "טלפון" },
     { key: "city", label: "עיר" },
-    { key: "address", label: "כתובת" },
+    { key: "address", label: "רחוב" },
+    { key: "house_number", label: "מספר בית" },
     { key: "floor", label: "קומה" },
     { key: "is_new", label: "חדש" },
     { key: "notes", label: "הערות" },

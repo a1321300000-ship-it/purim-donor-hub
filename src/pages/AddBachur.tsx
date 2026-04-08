@@ -2,14 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAddBachur } from "@/hooks/useBachurim";
 import { useSelectOptions } from "@/hooks/useSelectOptions";
-import { TITLE_OPTIONS } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AddressFields } from "@/components/AddressFields";
 import { toast } from "sonner";
 
 export default function AddBachur() {
@@ -52,35 +50,14 @@ export default function AddBachur() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>תואר</Label>
-                <Select value={form.title} onValueChange={(v) => set("title", v)}>
-                  <SelectTrigger><SelectValue placeholder="בחר תואר" /></SelectTrigger>
-                  <SelectContent>
-                    {TITLE_OPTIONS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
                 <Label>שם מלא *</Label>
                 <Input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>שם האב</Label>
                 <Input value={form.father_name} onChange={(e) => set("father_name", e.target.value)} />
               </div>
-              <div className="space-y-2">
-                <Label>טלפון</Label>
-                <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
-              </div>
             </div>
-            <AddressFields
-              city={form.city} address={form.address} floor={form.floor}
-              onCityChange={(v) => set("city", v)}
-              onAddressChange={(v) => set("address", v)}
-              onFloorChange={(v) => set("floor", v)}
-            />
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>ישיבה</Label>

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useBachurim, useUpdateBachur, useDeleteBachur } from "@/hooks/useBachurim";
 import { useSelectOptions } from "@/hooks/useSelectOptions";
-import { Bachur, TITLE_OPTIONS } from "@/lib/store";
+import { Bachur } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,8 +20,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AddressFields } from "@/components/AddressFields";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export default function BachurimList() {
@@ -48,15 +47,15 @@ export default function BachurimList() {
   const saveEdit = () => {
     if (!editBachur) return;
     updateBachur.mutate(
-      { id: editBachur.id, updates: { ...editBachur } },
+      { id: editBachur.id, updates: { full_name: editBachur.full_name, father_name: editBachur.father_name, yeshiva: editBachur.yeshiva, shiur: editBachur.shiur, notes: editBachur.notes } },
       { onSuccess: () => { setEditBachur(null); toast.success("הבחור עודכן"); } }
     );
   };
 
-  const columnFields = ["full_name", "father_name", "phone", "yeshiva", "shiur"] as const;
+  const columnFields = ["full_name", "father_name", "yeshiva", "shiur", "notes"] as const;
   const columnLabels: Record<string, string> = {
-    full_name: "שם מלא", father_name: "שם האב", phone: "טלפון",
-    yeshiva: "ישיבה", shiur: "שיעור",
+    full_name: "שם מלא", father_name: "שם האב",
+    yeshiva: "ישיבה", shiur: "שיעור", notes: "הערות",
   };
 
   const filtered = useMemo(() => {
@@ -90,7 +89,10 @@ export default function BachurimList() {
               <TableHead />
               {columnFields.map((key) => (
                 <TableHead key={key}>
-                  <Input className="h-7 text-xs" placeholder="סנן..." value={filters[key] || ""} onChange={(e) => updateFilter(key, e.target.value)} />
+                  <div className="relative">
+                    <Search className="h-3 w-3 absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input className="h-7 text-xs pr-7" value={filters[key] || ""} onChange={(e) => updateFilter(key, e.target.value)} />
+                  </div>
                 </TableHead>
               ))}
               <TableHead />
@@ -102,9 +104,9 @@ export default function BachurimList() {
                 <TableCell className="font-mono text-muted-foreground">{b.id}</TableCell>
                 <TableCell className="font-medium">{b.full_name}</TableCell>
                 <TableCell>{b.father_name}</TableCell>
-                <TableCell dir="ltr" className="text-left">{b.phone}</TableCell>
                 <TableCell>{b.yeshiva}</TableCell>
                 <TableCell>{b.shiur}</TableCell>
+                <TableCell className="text-sm max-w-[180px] truncate">{b.notes || "—"}</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -151,7 +153,7 @@ export default function BachurimList() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Edit */}
+      {/* Edit - only Full Name, Father's Name, Yeshiva, Shiur, Notes */}
       <Dialog open={!!editBachur} onOpenChange={(open) => !open && setEditBachur(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -161,37 +163,14 @@ export default function BachurimList() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>תואר</Label>
-                  <Select value={editBachur.title} onValueChange={(v) => setEditBachur({ ...editBachur, title: v })}>
-                    <SelectTrigger><SelectValue placeholder="בחר תואר" /></SelectTrigger>
-                    <SelectContent>
-                      {TITLE_OPTIONS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
                   <Label>שם מלא</Label>
                   <Input value={editBachur.full_name} onChange={(e) => setEditBachur({ ...editBachur, full_name: e.target.value })} />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>שם האב</Label>
                   <Input value={editBachur.father_name} onChange={(e) => setEditBachur({ ...editBachur, father_name: e.target.value })} />
                 </div>
-                <div className="space-y-2">
-                  <Label>טלפון</Label>
-                  <Input value={editBachur.phone} onChange={(e) => setEditBachur({ ...editBachur, phone: e.target.value })} />
-                </div>
               </div>
-              <AddressFields
-                city={editBachur.city}
-                address={editBachur.address}
-                floor={editBachur.floor}
-                onCityChange={(v) => setEditBachur({ ...editBachur, city: v, address: "" })}
-                onAddressChange={(v) => setEditBachur({ ...editBachur, address: v })}
-                onFloorChange={(v) => setEditBachur({ ...editBachur, floor: v })}
-              />
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>ישיבה</Label>
