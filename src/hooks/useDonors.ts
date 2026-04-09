@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDonors, addDonor, updateDonor, deleteDonor, addDonorsBatch, Donor } from "@/lib/store";
+import { getDonors, addDonor, updateDonor, deleteDonor, deleteDonorsBatch, resetDonorSequence, addDonorsBatch, Donor } from "@/lib/store";
 
 export function useDonors() {
   return useQuery<Donor[]>({
@@ -30,6 +30,20 @@ export function useDeleteDonor() {
   return useMutation({
     mutationFn: (id: number) => deleteDonor(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["donors"] }),
+  });
+}
+
+export function useDeleteDonorsBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: number[]) => deleteDonorsBatch(ids),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["donors"] }),
+  });
+}
+
+export function useResetDonorSequence() {
+  return useMutation({
+    mutationFn: () => resetDonorSequence(),
   });
 }
 

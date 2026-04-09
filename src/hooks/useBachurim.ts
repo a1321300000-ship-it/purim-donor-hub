@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getBachurim, addBachur, updateBachur, deleteBachur, addBachurimBatch, Bachur } from "@/lib/store";
+import { getBachurim, addBachur, updateBachur, deleteBachur, deleteBachurimBatch, resetBachurSequence, addBachurimBatch, Bachur } from "@/lib/store";
 
 export function useBachurim() {
   return useQuery<Bachur[]>({
@@ -30,6 +30,20 @@ export function useDeleteBachur() {
   return useMutation({
     mutationFn: (id: number) => deleteBachur(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bachurim"] }),
+  });
+}
+
+export function useDeleteBachurimBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: number[]) => deleteBachurimBatch(ids),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["bachurim"] }),
+  });
+}
+
+export function useResetBachurSequence() {
+  return useMutation({
+    mutationFn: () => resetBachurSequence(),
   });
 }
 
