@@ -184,7 +184,7 @@ export async function deleteDonorsBatch(ids: number[]): Promise<void> {
 }
 
 export async function resetDonorSequence(): Promise<void> {
-  const { error } = await supabase.rpc("reset_donor_sequence" as any);
+  const { error } = await (supabase.rpc as any)("reset_donor_sequence");
   if (error) throw error;
 }
 
@@ -266,7 +266,7 @@ export async function deleteBachurimBatch(ids: number[]): Promise<void> {
 }
 
 export async function resetBachurSequence(): Promise<void> {
-  const { error } = await supabase.rpc("reset_bachur_sequence" as any);
+  const { error } = await (supabase.rpc as any)("reset_bachur_sequence");
   if (error) throw error;
 }
 
