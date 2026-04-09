@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSettings, useSaveSetting } from "@/hooks/useSettings";
 import { useDonors, useAddDonorsBatch } from "@/hooks/useDonors";
 import { useBachurim, useAddBachurimBatch } from "@/hooks/useBachurim";
+import { useSelectOptions } from "@/hooks/useSelectOptions";
 import { getDonorFields, getBachurFields, Donor, Bachur } from "@/lib/store";
 import { ListManager } from "@/components/ListManager";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Upload, Download, Settings } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Upload, Download, Settings, Shield } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
@@ -65,12 +68,9 @@ function parseFile(file: File): Promise<{ columns: string[]; rows: Record<string
           });
           resolve({ columns, rows });
         }
-      } catch (err) {
-        reject(err);
-      }
+      } catch (err) { reject(err); }
     };
-    if (isCSV) reader.readAsText(file);
-    else reader.readAsArrayBuffer(file);
+    if (isCSV) reader.readAsText(file); else reader.readAsArrayBuffer(file);
   });
 }
 
@@ -78,6 +78,9 @@ export default function DataSettings() {
   const { data: settings, isLoading: settingsLoading } = useSettings();
   const { data: donors = [] } = useDonors();
   const { data: bachurim = [] } = useBachurim();
+  const { data: titleOptions = [] } = useSelectOptions("title");
+  const { data: yeshivot = [] } = useSelectOptions("yeshiva");
+  const { data: shiurim = [] } = useSelectOptions("shiur");
   const saveSetting = useSaveSetting();
   const addDonorsBatch = useAddDonorsBatch();
   const addBachurimBatch = useAddBachurimBatch();
@@ -85,6 +88,7 @@ export default function DataSettings() {
   const yearsList = settings?.years_list || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'];
   const currentYear = settings?.current_year || 'תשפ"ה';
   const yearCount = settings?.year_count || 3;
+  const bulkActionsEnabled = (settings as any)?.bulk_actions_enabled !== false;
   const DONOR_FIELDS = getDonorFields(yearsList);
   const BACHUR_FIELDS = getBachurFields();
 
@@ -95,6 +99,11 @@ export default function DataSettings() {
   const [mapping, setMapping] = useState<ColumnMapping>({});
   const [exportFields, setExportFields] = useState<string[]>(DONOR_FIELDS.map((f) => f.key));
   const [exportFormat, setExportFormat] = useState<"xlsx" | "csv">("xlsx");
+  // Export filters
+  const [filterCity, setFilterCity] = useState("");
+  const [filterTitle, setFilterTitle] = useState("");
+  const [filterYeshiva, setFilterYeshiva] = useState("");
+  const [filterMinAmount, setFilterMinAmount] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const activeFields = exportTarget === "donors" ? DONOR_FIELDS : BACHUR_FIELDS;
@@ -102,6 +111,7 @@ export default function DataSettings() {
 
   useEffect(() => {
     setExportFields(activeFields.map((f) => f.key));
+    setFilterCity(""); setFilterTitle(""); setFilterYeshiva(""); setFilterMinAmount("");
   }, [exportTarget, yearsList.join(",")]);
 
   const handleYearChange = async (newYear: string) => {
@@ -118,6 +128,11 @@ export default function DataSettings() {
     toast.success(`מציג ${newCount} שנים`);
   };
 
+  const handleBulkActionsToggle = async (enabled: boolean) => {
+    await saveSetting.mutateAsync({ key: "bulk_actions_enabled", value: enabled });
+    toast.success(enabled ? "כפתורי מחיקה ואיפוס הופעלו" : "כפתורי מחיקה ואיפוס נוטרלו");
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -132,15 +147,12 @@ export default function DataSettings() {
       });
       setMapping(autoMap);
       toast.info(`נטענו ${rows.length} שורות עם ${columns.length} עמודות`);
-    } catch {
-      toast.error("שגיאה בקריאת הקובץ");
-    }
+    } catch { toast.error("שגיאה בקריאת הקובץ"); }
     e.target.value = "";
   };
 
   const handleImport = () => {
     if (fileData.length === 0) return;
-
     if (importTarget === "donors") {
       const newDonors: Omit<Donor, "id" | "created_at" | "updated_at">[] = fileData.map((row) => {
         const d: Omit<Donor, "id" | "created_at" | "updated_at"> = {
@@ -151,7 +163,7 @@ export default function DataSettings() {
           if (yearsList.includes(fieldKey)) {
             d.donations[fieldKey] = Number(val) || 0;
           } else if (fieldKey === "is_new") {
-            d.is_new = val === "true" || val === "1" || val === "כן";
+            d.is_new = val === "true" || val === "1" || val === "כן" || val.toLowerCase() === "yes" || val === "✓" || val === "✔";
           } else if (fieldKey !== "id" && fieldKey in d) {
             (d as any)[fieldKey] = val;
           }
@@ -170,7 +182,7 @@ export default function DataSettings() {
         Object.entries(mapping).forEach(([fileCol, fieldKey]) => {
           const val = row[fileCol] || "";
           if (fieldKey === "is_new") {
-            b.is_new = val === "true" || val === "1" || val === "כן";
+            b.is_new = val === "true" || val === "1" || val === "כן" || val.toLowerCase() === "yes" || val === "✓" || val === "✔";
           } else if (fieldKey !== "id" && fieldKey in b) {
             (b as any)[fieldKey] = val;
           }
@@ -184,15 +196,23 @@ export default function DataSettings() {
     }
   };
 
-  const clearImport = () => {
-    setFileData([]);
-    setFileColumns([]);
-    setMapping({});
-  };
+  const clearImport = () => { setFileData([]); setFileColumns([]); setMapping({}); };
 
   const handleExport = () => {
     const headers = activeFields.filter((f) => exportFields.includes(f.key));
-    const sourceData = exportTarget === "donors" ? donors : bachurim;
+    let sourceData: any[] = exportTarget === "donors" ? donors : bachurim;
+
+    // Apply filters
+    if (exportTarget === "donors") {
+      if (filterCity) sourceData = sourceData.filter((d: Donor) => d.city === filterCity);
+      if (filterTitle) sourceData = sourceData.filter((d: Donor) => d.title === filterTitle);
+      if (filterMinAmount) {
+        const min = Number(filterMinAmount);
+        sourceData = sourceData.filter((d: Donor) => (d.donations[currentYear] || 0) >= min);
+      }
+    } else {
+      if (filterYeshiva) sourceData = sourceData.filter((b: Bachur) => b.yeshiva === filterYeshiva);
+    }
 
     const rows = sourceData.map((item) => {
       const row: Record<string, string | number | boolean> = {};
@@ -226,20 +246,18 @@ export default function DataSettings() {
       ];
       const blob = new Blob(["\uFEFF" + csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${fileName}.csv`;
-      a.click();
+      const a = document.createElement("a"); a.href = url; a.download = `${fileName}.csv`; a.click();
       URL.revokeObjectURL(url);
     }
-    toast.success("הקובץ יוצא בהצלחה");
+    toast.success(`יוצאו ${sourceData.length} רשומות בהצלחה`);
   };
 
   const toggleExportField = (key: string) => {
-    setExportFields((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    );
+    setExportFields((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
   };
+
+  // Unique cities from donors data
+  const uniqueCities = [...new Set(donors.map((d) => d.city).filter(Boolean))].sort();
 
   if (settingsLoading) return <div className="text-center py-8 text-muted-foreground">טוען...</div>;
 
@@ -248,10 +266,7 @@ export default function DataSettings() {
       {/* Year Settings */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            הגדרות שנים
-          </CardTitle>
+          <CardTitle className="flex items-center gap-2"><Settings className="h-5 w-5" />הגדרות שנים</CardTitle>
           <CardDescription>בחירת השנה הנוכחית וכמות השנים המוצגות</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -260,27 +275,33 @@ export default function DataSettings() {
               <Label>שנה נוכחית</Label>
               <Select value={currentYear} onValueChange={handleYearChange}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {HEBREW_YEARS.map((y) => (
-                    <SelectItem key={y} value={y}>{y}</SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectContent>{HEBREW_YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>כמות שנים להצגה</Label>
               <Select value={String(yearCount)} onValueChange={(v) => handleYearCountChange(Number(v))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[2, 3, 4, 5, 6].map((n) => (
-                    <SelectItem key={n} value={String(n)}>{n} שנים</SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectContent>{[2, 3, 4, 5, 6].map((n) => <SelectItem key={n} value={String(n)}>{n} שנים</SelectItem>)}</SelectContent>
               </Select>
             </div>
           </div>
           <div className="text-sm text-muted-foreground">
             שנים מוצגות: <span className="font-medium text-foreground">{yearsList.join("  ←  ")}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Bulk Actions Toggle */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5" />אבטחה ושליטה</CardTitle>
+          <CardDescription>הפעלה/נטרול של כפתורי מחיקה ואיפוס בטבלאות</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="bulk-toggle">הפעל כפתורי מחיקה קבוצתית ואיפוס ID</Label>
+            <Switch id="bulk-toggle" checked={bulkActionsEnabled} onCheckedChange={handleBulkActionsToggle} />
           </div>
         </CardContent>
       </Card>
@@ -291,10 +312,7 @@ export default function DataSettings() {
       {/* Import */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5" />
-            יבוא נתונים
-          </CardTitle>
+          <CardTitle className="flex items-center gap-2"><Upload className="h-5 w-5" />יבוא נתונים</CardTitle>
           <CardDescription>העלאת קובץ Excel או CSV עם מיפוי עמודות לשדות המערכת</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -308,13 +326,10 @@ export default function DataSettings() {
               </SelectContent>
             </Select>
           </div>
-
           <input ref={fileRef} type="file" accept=".csv,.txt,.xlsx,.xls" className="hidden" onChange={handleFileUpload} />
           <Button variant="outline" onClick={() => fileRef.current?.click()}>
-            <Upload className="h-4 w-4 ml-2" />
-            בחר קובץ (Excel / CSV)
+            <Upload className="h-4 w-4 ml-2" />בחר קובץ (Excel / CSV)
           </Button>
-
           {fileColumns.length > 0 && (
             <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
               <h4 className="font-medium text-sm">מיפוי עמודות</h4>
@@ -322,16 +337,11 @@ export default function DataSettings() {
                 <div key={col} className="flex items-center gap-3">
                   <span className="text-sm w-32 truncate font-mono">{col}</span>
                   <span className="text-muted-foreground">←</span>
-                  <Select
-                    value={mapping[col] || "_skip"}
-                    onValueChange={(v) => setMapping((prev) => ({ ...prev, [col]: v === "_skip" ? "" : v }))}
-                  >
+                  <Select value={mapping[col] || "_skip"} onValueChange={(v) => setMapping((prev) => ({ ...prev, [col]: v === "_skip" ? "" : v }))}>
                     <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="_skip">דלג</SelectItem>
-                      {importFields.filter((f) => f.key !== "id").map((f) => (
-                        <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
-                      ))}
+                      {importFields.filter((f) => f.key !== "id").map((f) => <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -347,11 +357,8 @@ export default function DataSettings() {
       {/* Export */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Download className="h-5 w-5" />
-            יצוא נתונים
-          </CardTitle>
-          <CardDescription>בחירת שדות ויצוא לקובץ Excel או CSV</CardDescription>
+          <CardTitle className="flex items-center gap-2"><Download className="h-5 w-5" />יצוא נתונים</CardTitle>
+          <CardDescription>בחירת שדות, סינון ויצוא לקובץ Excel או CSV</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -364,13 +371,58 @@ export default function DataSettings() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Smart Filters */}
+          <div className="border rounded-lg p-3 space-y-3 bg-muted/20">
+            <h4 className="font-medium text-sm">סינון ייצוא (אופציונלי)</h4>
+            <div className="grid grid-cols-2 gap-3">
+              {exportTarget === "donors" && (
+                <>
+                  <div className="space-y-1">
+                    <Label className="text-xs">עיר</Label>
+                    <Select value={filterCity || "_all"} onValueChange={(v) => setFilterCity(v === "_all" ? "" : v)}>
+                      <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_all">הכל</SelectItem>
+                        {uniqueCities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">תואר</Label>
+                    <Select value={filterTitle || "_all"} onValueChange={(v) => setFilterTitle(v === "_all" ? "" : v)}>
+                      <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_all">הכל</SelectItem>
+                        {titleOptions.map((t) => <SelectItem key={t.id} value={t.value}>{t.value}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1 col-span-2">
+                    <Label className="text-xs">סכום תרומה מינימלי ({currentYear})</Label>
+                    <Input type="number" className="h-8" placeholder="למשל: 400" value={filterMinAmount} onChange={(e) => setFilterMinAmount(e.target.value)} />
+                  </div>
+                </>
+              )}
+              {exportTarget === "bachurim" && (
+                <div className="space-y-1">
+                  <Label className="text-xs">ישיבה</Label>
+                  <Select value={filterYeshiva || "_all"} onValueChange={(v) => setFilterYeshiva(v === "_all" ? "" : v)}>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_all">הכל</SelectItem>
+                      {yeshivot.map((y) => <SelectItem key={y.id} value={y.value}>{y.value}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             {activeFields.map((f) => (
               <label key={f.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                <Checkbox
-                  checked={exportFields.includes(f.key)}
-                  onCheckedChange={() => toggleExportField(f.key)}
-                />
+                <Checkbox checked={exportFields.includes(f.key)} onCheckedChange={() => toggleExportField(f.key)} />
                 {f.label}
               </label>
             ))}
@@ -385,10 +437,7 @@ export default function DataSettings() {
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={handleExport}>
-            <Download className="h-4 w-4 ml-2" />
-            ייצא לקובץ
-          </Button>
+          <Button onClick={handleExport}><Download className="h-4 w-4 ml-2" />ייצא לקובץ</Button>
         </CardContent>
       </Card>
     </div>
