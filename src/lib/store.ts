@@ -178,6 +178,16 @@ export async function deleteDonor(id: number): Promise<void> {
   if (error) throw error;
 }
 
+export async function deleteDonorsBatch(ids: number[]): Promise<void> {
+  const { error } = await supabase.from("donors").delete().in("id", ids);
+  if (error) throw error;
+}
+
+export async function resetDonorSequence(): Promise<void> {
+  const { error } = await (supabase.rpc as any)("reset_donor_sequence");
+  if (error) throw error;
+}
+
 export async function addDonorsBatch(donors: Omit<Donor, "id" | "created_at" | "updated_at">[]): Promise<void> {
   const { error } = await supabase.from("donors").insert(
     donors.map((d) => ({
@@ -247,6 +257,16 @@ export async function updateBachur(id: number, updates: Partial<Omit<Bachur, "id
 
 export async function deleteBachur(id: number): Promise<void> {
   const { error } = await supabase.from("bachurim").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteBachurimBatch(ids: number[]): Promise<void> {
+  const { error } = await supabase.from("bachurim").delete().in("id", ids);
+  if (error) throw error;
+}
+
+export async function resetBachurSequence(): Promise<void> {
+  const { error } = await (supabase.rpc as any)("reset_bachur_sequence");
   if (error) throw error;
 }
 

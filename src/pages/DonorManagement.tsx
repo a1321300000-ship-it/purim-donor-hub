@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useDonors, useUpdateDonor, useDeleteDonor } from "@/hooks/useDonors";
+import { useDonors, useUpdateDonor, useDeleteDonor, useDeleteDonorsBatch, useResetDonorSequence } from "@/hooks/useDonors";
 import { useSettings } from "@/hooks/useSettings";
 import { useSelectOptions } from "@/hooks/useSelectOptions";
 import { Donor } from "@/lib/store";
@@ -23,8 +23,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AddressFields } from "@/components/AddressFields";
-import { MoreHorizontal, Pencil, Archive, Trash2, History, Sparkles, Search } from "lucide-react";
+import { MoreHorizontal, Pencil, Archive, Trash2, History, Sparkles, Search, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+
+const PAGE_SIZE = 50;
 
 export default function DonorManagement() {
   const { data: donors = [], isLoading } = useDonors();
@@ -32,15 +34,24 @@ export default function DonorManagement() {
   const { data: titleOptions = [] } = useSelectOptions("title");
   const updateDonor = useUpdateDonor();
   const deleteDonorMut = useDeleteDonor();
+  const deleteBatchMut = useDeleteDonorsBatch();
+  const resetSeqMut = useResetDonorSequence();
 
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [editDonor, setEditDonor] = useState<Donor | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [historyId, setHistoryId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [resetSeqOpen, setResetSeqOpen] = useState(false);
+  const [page, setPage] = useState(0);
 
   const yearsList = settings?.years_list || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'];
   const currentYear = settings?.current_year || yearsList[yearsList.length - 1];
   const previousYears = yearsList.filter((y) => y !== currentYear);
+
+  // Check if bulk actions enabled (default true)
+  const bulkActionsEnabled = (settings as any)?.bulk_actions_enabled !== false;
 
   const updateFilter = (key: string, value: string) =>
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -52,53 +63,75 @@ export default function DonorManagement() {
     });
   };
 
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedIds);
+    deleteBatchMut.mutate(ids, {
+      onSuccess: () => {
+        toast.success(`${ids.length} תורמים נמחקו`);
+        setSelectedIds(new Set());
+        setBulkDeleteOpen(false);
+      },
+    });
+  };
+
+  const handleResetSequence = () => {
+    resetSeqMut.mutate(undefined, {
+      onSuccess: () => { toast.success("מונה ה-ID אופס ל-1"); setResetSeqOpen(false); },
+      onError: () => toast.error("שגיאה באיפוס המונה"),
+    });
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginatedData.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedData.map((d) => d.id)));
+    }
+  };
+
   const saveEdit = () => {
     if (!editDonor) return;
     updateDonor.mutate(
       {
         id: editDonor.id,
         updates: {
-          title: editDonor.title,
-          full_name: editDonor.full_name,
-          father_name: editDonor.father_name,
-          phone: editDonor.phone,
-          city: editDonor.city,
-          address: editDonor.address,
-          house_number: editDonor.house_number,
-          floor: editDonor.floor,
-          is_new: editDonor.is_new,
-          notes: editDonor.notes,
-          donations: editDonor.donations,
-          donation_notes: editDonor.donation_notes,
+          title: editDonor.title, full_name: editDonor.full_name, father_name: editDonor.father_name,
+          phone: editDonor.phone, city: editDonor.city, address: editDonor.address,
+          house_number: editDonor.house_number, floor: editDonor.floor, is_new: editDonor.is_new,
+          notes: editDonor.notes, donations: editDonor.donations, donation_notes: editDonor.donation_notes,
         },
       },
-      {
-        onSuccess: () => {
-          setEditDonor(null);
-          toast.success("התורם עודכן");
-        },
-      }
+      { onSuccess: () => { setEditDonor(null); toast.success("התורם עודכן"); } }
     );
   };
 
-  // Column order: ID > Title > Full Name > Father's Name > City > Street > House Number > Floor > Notes > Donations > Donation Notes
   const columnFields = ["title", "full_name", "father_name", "city", "address", "house_number", "floor"] as const;
   const columnLabels: Record<string, string> = {
     title: "תואר", full_name: "שם מלא", father_name: "שם האב",
-    city: "עיר", address: "רחוב", house_number: "מספר בית", floor: "קומה", notes: "הערות",
+    city: "עיר", address: "רחוב", house_number: "מס׳ בית", floor: "קומה", notes: "הערות",
   };
 
   const filtered = useMemo(() => {
     return donors.filter((d) => {
-      const f = filters;
       for (const key of columnFields) {
-        if (f[key] && !(d as any)[key]?.includes(f[key])) return false;
+        if (filters[key] && !(d as any)[key]?.includes(filters[key])) return false;
       }
-      if (f.notes && !d.notes.includes(f.notes)) return false;
-      if (f[currentYear] && !(d.donations[currentYear]?.toString() || "0").includes(f[currentYear])) return false;
+      if (filters.notes && !d.notes.includes(filters.notes)) return false;
+      if (filters[currentYear] && !(d.donations[currentYear]?.toString() || "0").includes(filters[currentYear])) return false;
       return true;
     });
-  }, [donors, filters, columnFields, currentYear]);
+  }, [donors, filters, currentYear]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginatedData = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const currentYearTotal = useMemo(
     () => filtered.reduce((sum, d) => sum + (d.donations[currentYear] || 0), 0),
@@ -110,52 +143,64 @@ export default function DonorManagement() {
     ? yearsList.filter((y) => historyDonor.donations[y] && historyDonor.donations[y] > 0)
     : [];
 
-  if (isLoading) {
-    return <div className="text-center py-12 text-muted-foreground">טוען נתונים...</div>;
-  }
+  if (isLoading) return <div className="text-center py-12 text-muted-foreground">טוען נתונים...</div>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {/* Bulk actions bar */}
+      {bulkActionsEnabled && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {selectedIds.size > 0 && (
+            <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 className="h-4 w-4 ml-1" /> מחק {selectedIds.size} נבחרים
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => setResetSeqOpen(true)}>
+            <RotateCcw className="h-4 w-4 ml-1" /> איפוס מונה ID
+          </Button>
+        </div>
+      )}
+
       <div className="border rounded-lg overflow-auto bg-card">
-        <Table>
+        <Table className="text-sm">
           <TableHeader>
             <TableRow className="bg-primary text-primary-foreground">
-              <TableHead className="text-right font-semibold w-12 text-primary-foreground">מזהה</TableHead>
-              {columnFields.map((key) => (
-                <TableHead key={key} className="text-right font-semibold text-primary-foreground">
-                  {columnLabels[key]}
+              {bulkActionsEnabled && (
+                <TableHead className="w-8 px-2">
+                  <Checkbox checked={paginatedData.length > 0 && selectedIds.size === paginatedData.length} onCheckedChange={toggleSelectAll} />
                 </TableHead>
+              )}
+              <TableHead className="text-right font-semibold w-10 px-2 text-primary-foreground">ID</TableHead>
+              {columnFields.map((key) => (
+                <TableHead key={key} className="text-right font-semibold px-2 text-primary-foreground">{columnLabels[key]}</TableHead>
               ))}
-              <TableHead className="text-right font-semibold text-primary-foreground">הערות</TableHead>
-              <TableHead className="text-center font-semibold min-w-[100px] text-primary-foreground">
-                תרומות {currentYear}
-              </TableHead>
-              <TableHead className="text-right font-semibold text-primary-foreground min-w-[120px]">
-                הערות {currentYear}
-              </TableHead>
-              <TableHead className="w-10" />
-              <TableHead className="w-10" />
+              <TableHead className="text-right font-semibold px-2 text-primary-foreground">הערות</TableHead>
+              <TableHead className="text-center font-semibold px-2 text-primary-foreground whitespace-nowrap">תרומות {currentYear}</TableHead>
+              <TableHead className="text-right font-semibold px-2 text-primary-foreground whitespace-nowrap">הערות {currentYear}</TableHead>
+              <TableHead className="w-8 px-1" />
+              <TableHead className="w-8 px-1" />
             </TableRow>
             <TableRow className="bg-muted/30">
-              <TableHead />
+              {bulkActionsEnabled && <TableHead className="px-2" />}
+              <TableHead className="px-2" />
               {columnFields.map((key) => (
-                <TableHead key={key}>
+                <TableHead key={key} className="px-2">
                   <div className="relative">
-                    <Search className="h-3 w-3 absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <Input className="h-7 text-xs pr-7" value={filters[key] || ""} onChange={(e) => updateFilter(key, e.target.value)} />
+                    <Search className="h-3 w-3 absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input className="h-6 text-xs pr-6" value={filters[key] || ""} onChange={(e) => updateFilter(key, e.target.value)} />
                   </div>
                 </TableHead>
               ))}
-              <TableHead>
+              <TableHead className="px-2">
                 <div className="relative">
-                  <Search className="h-3 w-3 absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input className="h-7 text-xs pr-7" value={filters.notes || ""} onChange={(e) => updateFilter("notes", e.target.value)} />
+                  <Search className="h-3 w-3 absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input className="h-6 text-xs pr-6" value={filters.notes || ""} onChange={(e) => updateFilter("notes", e.target.value)} />
                 </div>
               </TableHead>
-              <TableHead>
+              <TableHead className="px-2">
                 <div className="relative">
-                  <Search className="h-3 w-3 absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input className="h-7 text-xs w-20 mx-auto pr-7" value={filters[currentYear] || ""} onChange={(e) => updateFilter(currentYear, e.target.value)} />
+                  <Search className="h-3 w-3 absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input className="h-6 text-xs pr-6 w-16 mx-auto" value={filters[currentYear] || ""} onChange={(e) => updateFilter(currentYear, e.target.value)} />
                 </div>
               </TableHead>
               <TableHead />
@@ -164,49 +209,46 @@ export default function DonorManagement() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((donor, idx) => (
+            {paginatedData.map((donor, idx) => (
               <TableRow key={donor.id} className={idx % 2 === 0 ? "bg-card" : "bg-muted/20"}>
-                <TableCell className="font-mono text-muted-foreground">{donor.id}</TableCell>
-                <TableCell>{donor.title}</TableCell>
-                <TableCell className="font-medium">
+                {bulkActionsEnabled && (
+                  <TableCell className="px-2"><Checkbox checked={selectedIds.has(donor.id)} onCheckedChange={() => toggleSelect(donor.id)} /></TableCell>
+                )}
+                <TableCell className="font-mono text-muted-foreground px-2 text-xs">{donor.id}</TableCell>
+                <TableCell className="px-2">{donor.title}</TableCell>
+                <TableCell className="px-2 font-medium whitespace-nowrap">
                   <span className="flex items-center gap-1">
-                    {donor.is_new && <Sparkles className="h-4 w-4 text-gold shrink-0" />}
+                    {donor.is_new && <Sparkles className="h-3.5 w-3.5 text-gold shrink-0" />}
                     {donor.full_name}
                   </span>
                 </TableCell>
-                <TableCell>{donor.father_name}</TableCell>
-                <TableCell>{donor.city}</TableCell>
-                <TableCell>{donor.address}</TableCell>
-                <TableCell>{donor.house_number}</TableCell>
-                <TableCell>{donor.floor}</TableCell>
-                <TableCell className="text-sm max-w-[180px] truncate">{donor.notes || "—"}</TableCell>
-                <TableCell className="text-center">
+                <TableCell className="px-2">{donor.father_name}</TableCell>
+                <TableCell className="px-2">{donor.city}</TableCell>
+                <TableCell className="px-2">{donor.address}</TableCell>
+                <TableCell className="px-2">{donor.house_number}</TableCell>
+                <TableCell className="px-2">{donor.floor}</TableCell>
+                <TableCell className="px-2 max-w-[120px] truncate text-xs">{donor.notes || "—"}</TableCell>
+                <TableCell className="text-center px-2">
                   {donor.donations[currentYear] ? `₪${donor.donations[currentYear].toLocaleString()}` : "—"}
                 </TableCell>
-                <TableCell className="text-sm max-w-[140px] truncate">
-                  {donor.donation_notes?.[currentYear] || "—"}
-                </TableCell>
-                <TableCell>
+                <TableCell className="px-2 max-w-[100px] truncate text-xs">{donor.donation_notes?.[currentYear] || "—"}</TableCell>
+                <TableCell className="px-1">
                   {previousYears.length > 0 && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setHistoryId(donor.id)} title="היסטוריה">
-                      <History className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setHistoryId(donor.id)} title="היסטוריה">
+                      <History className="h-3.5 w-3.5" />
                     </Button>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="px-1">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-3.5 w-3.5" /></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => setEditDonor({ ...donor, donations: { ...donor.donations }, donation_notes: { ...donor.donation_notes } })}>
                         <Pencil className="h-4 w-4 ml-2" /> עריכה
                       </DropdownMenuItem>
-                      <DropdownMenuItem disabled>
-                        <Archive className="h-4 w-4 ml-2" /> העברה לארכיון
-                      </DropdownMenuItem>
+                      <DropdownMenuItem disabled><Archive className="h-4 w-4 ml-2" /> העברה לארכיון</DropdownMenuItem>
                       <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(donor.id)}>
                         <Trash2 className="h-4 w-4 ml-2" /> מחיקה
                       </DropdownMenuItem>
@@ -215,9 +257,9 @@ export default function DonorManagement() {
                 </TableCell>
               </TableRow>
             ))}
-            {filtered.length === 0 && (
+            {paginatedData.length === 0 && (
               <TableRow>
-                <TableCell colSpan={columnFields.length + 6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={columnFields.length + (bulkActionsEnabled ? 7 : 6)} className="text-center py-8 text-muted-foreground">
                   לא נמצאו תורמים
                 </TableCell>
               </TableRow>
@@ -226,34 +268,40 @@ export default function DonorManagement() {
         </Table>
       </div>
 
-      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-        <span>סה״כ תורמים: {filtered.length}</span>
-        <span>| סה״כ {currentYear}: <span className="font-semibold text-foreground">₪{currentYearTotal.toLocaleString()}</span></span>
+      {/* Pagination + summary */}
+      <div className="flex items-center justify-between text-sm text-muted-foreground flex-wrap gap-2">
+        <div className="flex items-center gap-4">
+          <span>סה״כ: {filtered.length}</span>
+          <span>| סה״כ {currentYear}: <span className="font-semibold text-foreground">₪{currentYearTotal.toLocaleString()}</span></span>
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}>הקודם</Button>
+            <span className="px-2">{page + 1} / {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>הבא</Button>
+          </div>
+        )}
       </div>
 
       {/* History Dialog */}
       <Dialog open={!!historyDonor} onOpenChange={(open) => !open && setHistoryId(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>היסטוריית תרומות - {historyDonor?.full_name}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>היסטוריית תרומות - {historyDonor?.full_name}</DialogTitle></DialogHeader>
           {historyDonor && (
             <div className="space-y-3">
               {historyYearsWithData.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">אין תרומות קודמות</p>
-              ) : (
-                historyYearsWithData.map((y) => (
-                  <div key={y} className="border rounded-lg p-3 space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-primary">{y}</span>
-                      <span className="font-medium">₪{historyDonor.donations[y]?.toLocaleString()}</span>
-                    </div>
-                    {historyDonor.donation_notes?.[y] && (
-                      <p className="text-sm text-muted-foreground">{historyDonor.donation_notes[y]}</p>
-                    )}
+              ) : historyYearsWithData.map((y) => (
+                <div key={y} className="border rounded-lg p-3 space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-primary">{y}</span>
+                    <span className="font-medium">₪{historyDonor.donations[y]?.toLocaleString()}</span>
                   </div>
-                ))
-              )}
+                  {historyDonor.donation_notes?.[y] && (
+                    <p className="text-sm text-muted-foreground">{historyDonor.donation_notes[y]}</p>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </DialogContent>
@@ -268,9 +316,35 @@ export default function DonorManagement() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>ביטול</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              מחק
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">מחק</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>האם אתה בטוח שברצונך לבצע פעולה זו?</AlertDialogTitle>
+            <AlertDialogDescription>לא ניתן לבטל זאת. {selectedIds.size} תורמים יימחקו לצמיתות.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">מחק</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset Sequence Confirmation */}
+      <AlertDialog open={resetSeqOpen} onOpenChange={setResetSeqOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>האם אתה בטוח שברצונך לבצע פעולה זו?</AlertDialogTitle>
+            <AlertDialogDescription>מונה ה-ID יאופס ל-1. פעולה זו מיועדת לשימוש לפני השקת המערכת בלבד.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetSequence}>אפס</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -278,9 +352,7 @@ export default function DonorManagement() {
       {/* Edit Dialog */}
       <Dialog open={!!editDonor} onOpenChange={(open) => !open && setEditDonor(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto z-50">
-          <DialogHeader>
-            <DialogTitle>עריכת תורם #{editDonor?.id}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>עריכת תורם #{editDonor?.id}</DialogTitle></DialogHeader>
           {editDonor && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -289,9 +361,7 @@ export default function DonorManagement() {
                   <Select value={editDonor.title} onValueChange={(v) => setEditDonor({ ...editDonor, title: v })}>
                     <SelectTrigger><SelectValue placeholder="בחר תואר" /></SelectTrigger>
                     <SelectContent className="z-[200]">
-                      {titleOptions.map((t) => (
-                        <SelectItem key={t.id} value={t.value}>{t.value}</SelectItem>
-                      ))}
+                      {titleOptions.map((t) => <SelectItem key={t.id} value={t.value}>{t.value}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -311,9 +381,7 @@ export default function DonorManagement() {
                 </div>
               </div>
               <AddressFields
-                city={editDonor.city}
-                address={editDonor.address}
-                floor={editDonor.floor}
+                city={editDonor.city} address={editDonor.address} floor={editDonor.floor}
                 onCityChange={(v) => setEditDonor({ ...editDonor, city: v, address: "" })}
                 onAddressChange={(v) => setEditDonor({ ...editDonor, address: v })}
                 onFloorChange={(v) => setEditDonor({ ...editDonor, floor: v })}
@@ -323,11 +391,7 @@ export default function DonorManagement() {
                 <Input value={editDonor.house_number} onChange={(e) => setEditDonor({ ...editDonor, house_number: e.target.value })} placeholder="מספר בית" />
               </div>
               <div className="flex items-center gap-2">
-                <Checkbox
-                  id="edit_is_new"
-                  checked={editDonor.is_new}
-                  onCheckedChange={(v) => setEditDonor({ ...editDonor, is_new: !!v })}
-                />
+                <Checkbox id="edit_is_new" checked={editDonor.is_new} onCheckedChange={(v) => setEditDonor({ ...editDonor, is_new: !!v })} />
                 <Label htmlFor="edit_is_new">תורם חדש</Label>
               </div>
               <div className="space-y-2">
@@ -339,34 +403,21 @@ export default function DonorManagement() {
                   <div key={y} className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label>תרומות {y}</Label>
-                      <Input
-                        type="number"
-                        value={editDonor.donations[y] || ""}
-                        onChange={(e) => setEditDonor({
-                          ...editDonor,
-                          donations: { ...editDonor.donations, [y]: e.target.value === "" ? 0 : Number(e.target.value) },
-                        })}
-                        placeholder="₪0"
-                      />
+                      <Input type="number" value={editDonor.donations[y] || ""} onChange={(e) => setEditDonor({
+                        ...editDonor, donations: { ...editDonor.donations, [y]: e.target.value === "" ? 0 : Number(e.target.value) },
+                      })} placeholder="₪0" />
                     </div>
                     <div className="space-y-1">
                       <Label>הערות {y}</Label>
-                      <Input
-                        value={editDonor.donation_notes?.[y] || ""}
-                        onChange={(e) => setEditDonor({
-                          ...editDonor,
-                          donation_notes: { ...editDonor.donation_notes, [y]: e.target.value },
-                        })}
-                        placeholder="הערה..."
-                      />
+                      <Input value={editDonor.donation_notes?.[y] || ""} onChange={(e) => setEditDonor({
+                        ...editDonor, donation_notes: { ...editDonor.donation_notes, [y]: e.target.value },
+                      })} placeholder="הערה..." />
                     </div>
                   </div>
                 ))}
               </div>
               <div className="flex gap-2 pt-2">
-                <Button onClick={saveEdit} disabled={updateDonor.isPending}>
-                  {updateDonor.isPending ? "שומר..." : "שמור"}
-                </Button>
+                <Button onClick={saveEdit} disabled={updateDonor.isPending}>{updateDonor.isPending ? "שומר..." : "שמור"}</Button>
                 <Button variant="outline" onClick={() => setEditDonor(null)}>ביטול</Button>
               </div>
             </div>

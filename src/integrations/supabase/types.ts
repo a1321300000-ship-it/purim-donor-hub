@@ -166,7 +166,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      reset_bachur_sequence: { Args: never; Returns: undefined }
+      reset_donor_sequence: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
