@@ -220,12 +220,22 @@ export async function addDonorsBatch(donors: Omit<Donor, "id" | "created_at" | "
 // ---- Bachurim ----
 
 export async function getBachurim(): Promise<Bachur[]> {
-  const { data, error } = await supabase
-    .from("bachurim")
-    .select("*")
-    .order("id", { ascending: true });
-  if (error) throw error;
-  return (data || []).map((d) => ({
+  const allData: any[] = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data, error } = await supabase
+      .from("bachurim")
+      .select("*")
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    allData.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return allData.map((d) => ({
     ...d,
     yeshiva: (d as any).yeshiva || "",
     shiur: (d as any).shiur || "",
