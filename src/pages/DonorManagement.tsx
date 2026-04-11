@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useDonors, useUpdateDonor, useDeleteDonor, useDeleteDonorsBatch, useResetDonorSequence } from "@/hooks/useDonors";
+import { useDonors, useUpdateDonor, useDeleteDonor } from "@/hooks/useDonors";
 import { useSettings } from "@/hooks/useSettings";
 import { useSelectOptions } from "@/hooks/useSelectOptions";
 import { Donor } from "@/lib/store";
@@ -23,10 +23,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AddressFields } from "@/components/AddressFields";
-import { MoreHorizontal, Pencil, Archive, Trash2, History, Sparkles, Search, RotateCcw } from "lucide-react";
+import { MoreHorizontal, Pencil, Archive, Trash2, History, Sparkles, Search } from "lucide-react";
 import { toast } from "sonner";
-
-const PAGE_SIZE = 50;
 
 export default function DonorManagement() {
   const { data: donors = [], isLoading } = useDonors();
@@ -34,24 +32,15 @@ export default function DonorManagement() {
   const { data: titleOptions = [] } = useSelectOptions("title");
   const updateDonor = useUpdateDonor();
   const deleteDonorMut = useDeleteDonor();
-  const deleteBatchMut = useDeleteDonorsBatch();
-  const resetSeqMut = useResetDonorSequence();
 
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [editDonor, setEditDonor] = useState<Donor | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [historyId, setHistoryId] = useState<number | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [resetSeqOpen, setResetSeqOpen] = useState(false);
-  const [page, setPage] = useState(0);
 
   const yearsList = settings?.years_list || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'];
   const currentYear = settings?.current_year || yearsList[yearsList.length - 1];
   const previousYears = yearsList.filter((y) => y !== currentYear);
-
-  // Check if bulk actions enabled (default true)
-  const bulkActionsEnabled = (settings as any)?.bulk_actions_enabled !== false;
 
   const updateFilter = (key: string, value: string) =>
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -61,40 +50,6 @@ export default function DonorManagement() {
     deleteDonorMut.mutate(deleteId, {
       onSuccess: () => { toast.success("התורם נמחק"); setDeleteId(null); },
     });
-  };
-
-  const handleBulkDelete = () => {
-    const ids = Array.from(selectedIds);
-    deleteBatchMut.mutate(ids, {
-      onSuccess: () => {
-        toast.success(`${ids.length} תורמים נמחקו`);
-        setSelectedIds(new Set());
-        setBulkDeleteOpen(false);
-      },
-    });
-  };
-
-  const handleResetSequence = () => {
-    resetSeqMut.mutate(undefined, {
-      onSuccess: () => { toast.success("מונה ה-ID אופס ל-1"); setResetSeqOpen(false); },
-      onError: () => toast.error("שגיאה באיפוס המונה"),
-    });
-  };
-
-  const toggleSelect = (id: number) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === paginatedData.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(paginatedData.map((d) => d.id)));
-    }
   };
 
   const saveEdit = () => {
@@ -130,9 +85,6 @@ export default function DonorManagement() {
     });
   }, [donors, filters, currentYear]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginatedData = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-
   const currentYearTotal = useMemo(
     () => filtered.reduce((sum, d) => sum + (d.donations[currentYear] || 0), 0),
     [filtered, currentYear]
@@ -147,29 +99,10 @@ export default function DonorManagement() {
 
   return (
     <div className="space-y-3">
-      {/* Bulk actions bar */}
-      {bulkActionsEnabled && (
-        <div className="flex items-center gap-2 flex-wrap">
-          {selectedIds.size > 0 && (
-            <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
-              <Trash2 className="h-4 w-4 ml-1" /> מחק {selectedIds.size} נבחרים
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={() => setResetSeqOpen(true)}>
-            <RotateCcw className="h-4 w-4 ml-1" /> איפוס מונה ID
-          </Button>
-        </div>
-      )}
-
       <div className="border rounded-lg overflow-auto bg-card">
         <Table className="text-sm">
           <TableHeader>
             <TableRow className="bg-primary text-primary-foreground">
-              {bulkActionsEnabled && (
-                <TableHead className="w-8 px-2">
-                  <Checkbox checked={paginatedData.length > 0 && selectedIds.size === paginatedData.length} onCheckedChange={toggleSelectAll} />
-                </TableHead>
-              )}
               <TableHead className="text-right font-semibold w-10 px-2 text-primary-foreground">ID</TableHead>
               {columnFields.map((key) => (
                 <TableHead key={key} className="text-right font-semibold px-2 text-primary-foreground">{columnLabels[key]}</TableHead>
@@ -181,7 +114,6 @@ export default function DonorManagement() {
               <TableHead className="w-8 px-1" />
             </TableRow>
             <TableRow className="bg-muted/30">
-              {bulkActionsEnabled && <TableHead className="px-2" />}
               <TableHead className="px-2" />
               {columnFields.map((key) => (
                 <TableHead key={key} className="px-2">
@@ -209,11 +141,8 @@ export default function DonorManagement() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedData.map((donor, idx) => (
+            {filtered.map((donor, idx) => (
               <TableRow key={donor.id} className={idx % 2 === 0 ? "bg-card" : "bg-muted/20"}>
-                {bulkActionsEnabled && (
-                  <TableCell className="px-2"><Checkbox checked={selectedIds.has(donor.id)} onCheckedChange={() => toggleSelect(donor.id)} /></TableCell>
-                )}
                 <TableCell className="font-mono text-muted-foreground px-2 text-xs">{donor.id}</TableCell>
                 <TableCell className="px-2">{donor.title}</TableCell>
                 <TableCell className="px-2 font-medium whitespace-nowrap">
@@ -257,9 +186,9 @@ export default function DonorManagement() {
                 </TableCell>
               </TableRow>
             ))}
-            {paginatedData.length === 0 && (
+            {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={columnFields.length + (bulkActionsEnabled ? 7 : 6)} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={columnFields.length + 5} className="text-center py-8 text-muted-foreground">
                   לא נמצאו תורמים
                 </TableCell>
               </TableRow>
@@ -268,19 +197,10 @@ export default function DonorManagement() {
         </Table>
       </div>
 
-      {/* Pagination + summary */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground flex-wrap gap-2">
-        <div className="flex items-center gap-4">
-          <span>סה״כ: {filtered.length}</span>
-          <span>| סה״כ {currentYear}: <span className="font-semibold text-foreground">₪{currentYearTotal.toLocaleString()}</span></span>
-        </div>
-        {totalPages > 1 && (
-          <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}>הקודם</Button>
-            <span className="px-2">{page + 1} / {totalPages}</span>
-            <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>הבא</Button>
-          </div>
-        )}
+      {/* Summary */}
+      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <span>סה״כ: {filtered.length} תורמים</span>
+        <span>| סה״כ {currentYear}: <span className="font-semibold text-foreground">₪{currentYearTotal.toLocaleString()}</span></span>
       </div>
 
       {/* History Dialog */}
@@ -317,34 +237,6 @@ export default function DonorManagement() {
           <AlertDialogFooter>
             <AlertDialogCancel>ביטול</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">מחק</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Bulk Delete Confirmation */}
-      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>האם אתה בטוח שברצונך לבצע פעולה זו?</AlertDialogTitle>
-            <AlertDialogDescription>לא ניתן לבטל זאת. {selectedIds.size} תורמים יימחקו לצמיתות.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>ביטול</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">מחק</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Reset Sequence Confirmation */}
-      <AlertDialog open={resetSeqOpen} onOpenChange={setResetSeqOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>האם אתה בטוח שברצונך לבצע פעולה זו?</AlertDialogTitle>
-            <AlertDialogDescription>מונה ה-ID יאופס ל-1. פעולה זו מיועדת לשימוש לפני השקת המערכת בלבד.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>ביטול</AlertDialogCancel>
-            <AlertDialogAction onClick={handleResetSequence}>אפס</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
