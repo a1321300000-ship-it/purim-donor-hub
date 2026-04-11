@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSettings, useSaveSetting } from "@/hooks/useSettings";
-import { useDonors, useAddDonorsBatch } from "@/hooks/useDonors";
-import { useBachurim, useAddBachurimBatch } from "@/hooks/useBachurim";
+import { useDonors, useAddDonorsBatch, useDeleteDonorsBatch, useResetDonorSequence } from "@/hooks/useDonors";
+import { useBachurim, useAddBachurimBatch, useDeleteBachurimBatch, useResetBachurSequence } from "@/hooks/useBachurim";
 import { useSelectOptions } from "@/hooks/useSelectOptions";
 import { getDonorFields, getBachurFields, Donor, Bachur } from "@/lib/store";
 import { ListManager } from "@/components/ListManager";
@@ -11,8 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Upload, Download, Settings, Shield } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Upload, Download, Settings, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
@@ -74,21 +77,61 @@ function parseFile(file: File): Promise<{ columns: string[]; rows: Record<string
   });
 }
 
+// All donor fields including hidden ones
+const ALL_DONOR_FIELDS = [
+  { key: "id", label: "מזהה" },
+  { key: "title", label: "תואר" },
+  { key: "full_name", label: "שם מלא" },
+  { key: "father_name", label: "שם האב" },
+  { key: "phone", label: "טלפון" },
+  { key: "city", label: "עיר" },
+  { key: "address", label: "רחוב" },
+  { key: "house_number", label: "מספר בית" },
+  { key: "floor", label: "קומה" },
+  { key: "is_new", label: "תורם חדש" },
+  { key: "notes", label: "הערות" },
+];
+
+// All bachur fields including hidden ones
+const ALL_BACHUR_FIELDS = [
+  { key: "id", label: "מזהה" },
+  { key: "full_name", label: "שם מלא" },
+  { key: "father_name", label: "שם האב" },
+  { key: "phone", label: "טלפון" },
+  { key: "city", label: "עיר" },
+  { key: "address", label: "כתובת" },
+  { key: "floor", label: "קומה" },
+  { key: "yeshiva", label: "ישיבה" },
+  { key: "shiur", label: "שיעור" },
+  { key: "is_new", label: "חדש" },
+  { key: "notes", label: "הערות" },
+];
+
 export default function DataSettings() {
   const { data: settings, isLoading: settingsLoading } = useSettings();
   const { data: donors = [] } = useDonors();
   const { data: bachurim = [] } = useBachurim();
   const { data: titleOptions = [] } = useSelectOptions("title");
   const { data: yeshivot = [] } = useSelectOptions("yeshiva");
-  const { data: shiurim = [] } = useSelectOptions("shiur");
   const saveSetting = useSaveSetting();
   const addDonorsBatch = useAddDonorsBatch();
   const addBachurimBatch = useAddBachurimBatch();
+  const deleteDonorsBatch = useDeleteDonorsBatch();
+  const deleteBachurimBatch = useDeleteBachurimBatch();
+  const resetDonorSeq = useResetDonorSequence();
+  const resetBachurSeq = useResetBachurSequence();
 
   const yearsList = settings?.years_list || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'];
   const currentYear = settings?.current_year || 'תשפ"ה';
   const yearCount = settings?.year_count || 3;
-  const bulkActionsEnabled = (settings as any)?.bulk_actions_enabled !== false;
+
+  const donorExportFields = [
+    ...ALL_DONOR_FIELDS,
+    ...yearsList.map((y) => ({ key: y, label: `תרומות ${y}` })),
+    ...yearsList.map((y) => ({ key: `note_${y}`, label: `הערות ${y}` })),
+  ];
+  const bachurExportFields = ALL_BACHUR_FIELDS;
+
   const DONOR_FIELDS = getDonorFields(yearsList);
   const BACHUR_FIELDS = getBachurFields();
 
@@ -97,16 +140,21 @@ export default function DataSettings() {
   const [fileColumns, setFileColumns] = useState<string[]>([]);
   const [fileData, setFileData] = useState<Record<string, string>[]>([]);
   const [mapping, setMapping] = useState<ColumnMapping>({});
-  const [exportFields, setExportFields] = useState<string[]>(DONOR_FIELDS.map((f) => f.key));
+  const [exportFields, setExportFields] = useState<string[]>(donorExportFields.map((f) => f.key));
   const [exportFormat, setExportFormat] = useState<"xlsx" | "csv">("xlsx");
-  // Export filters
   const [filterCity, setFilterCity] = useState("");
   const [filterTitle, setFilterTitle] = useState("");
   const [filterYeshiva, setFilterYeshiva] = useState("");
   const [filterMinAmount, setFilterMinAmount] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const activeFields = exportTarget === "donors" ? DONOR_FIELDS : BACHUR_FIELDS;
+  // Confirm dialogs
+  const [deleteAllDonorsOpen, setDeleteAllDonorsOpen] = useState(false);
+  const [resetDonorSeqOpen, setResetDonorSeqOpen] = useState(false);
+  const [deleteAllBachurimOpen, setDeleteAllBachurimOpen] = useState(false);
+  const [resetBachurSeqOpen, setResetBachurSeqOpen] = useState(false);
+
+  const activeFields = exportTarget === "donors" ? donorExportFields : bachurExportFields;
   const importFields = importTarget === "donors" ? DONOR_FIELDS : BACHUR_FIELDS;
 
   useEffect(() => {
@@ -128,9 +176,38 @@ export default function DataSettings() {
     toast.success(`מציג ${newCount} שנים`);
   };
 
-  const handleBulkActionsToggle = async (enabled: boolean) => {
-    await saveSetting.mutateAsync({ key: "bulk_actions_enabled", value: enabled });
-    toast.success(enabled ? "כפתורי מחיקה ואיפוס הופעלו" : "כפתורי מחיקה ואיפוס נוטרלו");
+  // Delete all donors
+  const handleDeleteAllDonors = () => {
+    const ids = donors.map((d) => d.id);
+    if (ids.length === 0) { toast.info("אין תורמים למחיקה"); setDeleteAllDonorsOpen(false); return; }
+    deleteDonorsBatch.mutate(ids, {
+      onSuccess: () => { toast.success(`${ids.length} תורמים נמחקו`); setDeleteAllDonorsOpen(false); },
+      onError: () => toast.error("שגיאה במחיקת התורמים"),
+    });
+  };
+
+  const handleResetDonorSeq = () => {
+    resetDonorSeq.mutate(undefined, {
+      onSuccess: () => { toast.success("מונה ID תורמים אופס ל-1"); setResetDonorSeqOpen(false); },
+      onError: () => toast.error("שגיאה באיפוס המונה"),
+    });
+  };
+
+  // Delete all bachurim
+  const handleDeleteAllBachurim = () => {
+    const ids = bachurim.map((b) => b.id);
+    if (ids.length === 0) { toast.info("אין בחורים למחיקה"); setDeleteAllBachurimOpen(false); return; }
+    deleteBachurimBatch.mutate(ids, {
+      onSuccess: () => { toast.success(`${ids.length} בחורים נמחקו`); setDeleteAllBachurimOpen(false); },
+      onError: () => toast.error("שגיאה במחיקת הבחורים"),
+    });
+  };
+
+  const handleResetBachurSeq = () => {
+    resetBachurSeq.mutate(undefined, {
+      onSuccess: () => { toast.success("מונה ID בחורים אופס ל-1"); setResetBachurSeqOpen(false); },
+      onError: () => toast.error("שגיאה באיפוס המונה"),
+    });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,7 +279,6 @@ export default function DataSettings() {
     const headers = activeFields.filter((f) => exportFields.includes(f.key));
     let sourceData: any[] = exportTarget === "donors" ? donors : bachurim;
 
-    // Apply filters
     if (exportTarget === "donors") {
       if (filterCity) sourceData = sourceData.filter((d: Donor) => d.city === filterCity);
       if (filterTitle) sourceData = sourceData.filter((d: Donor) => d.title === filterTitle);
@@ -219,6 +295,9 @@ export default function DataSettings() {
       headers.forEach((h) => {
         if (exportTarget === "donors" && yearsList.includes(h.key)) {
           row[h.label] = (item as Donor).donations[h.key] || 0;
+        } else if (exportTarget === "donors" && h.key.startsWith("note_")) {
+          const year = h.key.replace("note_", "");
+          row[h.label] = (item as Donor).donation_notes?.[year] || "";
         } else {
           row[h.label] = (item as any)[h.key] ?? "";
         }
@@ -240,6 +319,10 @@ export default function DataSettings() {
         ...sourceData.map((item) =>
           headers.map((h) => {
             if (exportTarget === "donors" && yearsList.includes(h.key)) return (item as Donor).donations[h.key] || 0;
+            if (exportTarget === "donors" && h.key.startsWith("note_")) {
+              const year = h.key.replace("note_", "");
+              return `"${(item as Donor).donation_notes?.[year] || ""}"`;
+            }
             return `"${(item as any)[h.key] ?? ""}"`;
           }).join(",")
         ),
@@ -256,7 +339,6 @@ export default function DataSettings() {
     setExportFields((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
   };
 
-  // Unique cities from donors data
   const uniqueCities = [...new Set(donors.map((d) => d.city).filter(Boolean))].sort();
 
   if (settingsLoading) return <div className="text-center py-8 text-muted-foreground">טוען...</div>;
@@ -292,17 +374,41 @@ export default function DataSettings() {
         </CardContent>
       </Card>
 
-      {/* Bulk Actions Toggle */}
+      {/* Donor Management Zone */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5" />אבטחה ושליטה</CardTitle>
-          <CardDescription>הפעלה/נטרול של כפתורי מחיקה ואיפוס בטבלאות</CardDescription>
+          <CardTitle className="flex items-center gap-2"><Trash2 className="h-5 w-5" />ניהול תורמים</CardTitle>
+          <CardDescription>מחיקת כל הנתונים ואיפוס מונה ID של תורמים</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="bulk-toggle">הפעל כפתורי מחיקה קבוצתית ואיפוס ID</Label>
-            <Switch id="bulk-toggle" checked={bulkActionsEnabled} onCheckedChange={handleBulkActionsToggle} />
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button variant="destructive" size="sm" onClick={() => setDeleteAllDonorsOpen(true)}>
+              <Trash2 className="h-4 w-4 ml-1" /> מחיקת כל התורמים
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setResetDonorSeqOpen(true)}>
+              <RotateCcw className="h-4 w-4 ml-1" /> איפוס מונה ID
+            </Button>
           </div>
+          <p className="text-xs text-destructive font-medium">⚠️ זהירות: פעולות אלו אינן הפיכות. נתונים שנמחקו לא ניתנים לשחזור.</p>
+        </CardContent>
+      </Card>
+
+      {/* Bachur Management Zone */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Trash2 className="h-5 w-5" />ניהול בחורים</CardTitle>
+          <CardDescription>מחיקת כל הנתונים ואיפוס מונה ID של בחורים</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button variant="destructive" size="sm" onClick={() => setDeleteAllBachurimOpen(true)}>
+              <Trash2 className="h-4 w-4 ml-1" /> מחיקת כל הבחורים
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setResetBachurSeqOpen(true)}>
+              <RotateCcw className="h-4 w-4 ml-1" /> איפוס מונה ID
+            </Button>
+          </div>
+          <p className="text-xs text-destructive font-medium">⚠️ זהירות: פעולות אלו אינן הפיכות. נתונים שנמחקו לא ניתנים לשחזור.</p>
         </CardContent>
       </Card>
 
@@ -440,6 +546,59 @@ export default function DataSettings() {
           <Button onClick={handleExport}><Download className="h-4 w-4 ml-2" />ייצא לקובץ</Button>
         </CardContent>
       </Card>
+
+      {/* Confirm Dialogs */}
+      <AlertDialog open={deleteAllDonorsOpen} onOpenChange={setDeleteAllDonorsOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>האם אתה בטוח שברצונך לבצע פעולה זו?</AlertDialogTitle>
+            <AlertDialogDescription>כל התורמים ({donors.length}) יימחקו לצמיתות. לא ניתן לבטל זאת.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAllDonors} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">מחק הכל</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={resetDonorSeqOpen} onOpenChange={setResetDonorSeqOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>האם אתה בטוח שברצונך לבצע פעולה זו?</AlertDialogTitle>
+            <AlertDialogDescription>מונה ה-ID של תורמים יאופס ל-1. פעולה זו מיועדת לשימוש לפני השקת המערכת בלבד.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetDonorSeq}>אפס</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteAllBachurimOpen} onOpenChange={setDeleteAllBachurimOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>האם אתה בטוח שברצונך לבצע פעולה זו?</AlertDialogTitle>
+            <AlertDialogDescription>כל הבחורים ({bachurim.length}) יימחקו לצמיתות. לא ניתן לבטל זאת.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAllBachurim} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">מחק הכל</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={resetBachurSeqOpen} onOpenChange={setResetBachurSeqOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>האם אתה בטוח שברצונך לבצע פעולה זו?</AlertDialogTitle>
+            <AlertDialogDescription>מונה ה-ID של בחורים יאופס ל-1. פעולה זו מיועדת לשימוש לפני השקת המערכת בלבד.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetBachurSeq}>אפס</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
