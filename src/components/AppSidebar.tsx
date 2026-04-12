@@ -26,7 +26,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const isDonorSection = location.pathname === "/" || location.pathname === "/add-donor" || location.pathname === "/donor-archive";
+  const isDonorSection = location.pathname === "/" || location.pathname === "/add-donor" || location.pathname === "/donor-archive" || location.pathname === "/donor-mapping" || location.pathname === "/groups";
   const isBachurimSection = location.pathname.startsWith("/bachurim") || location.pathname === "/add-bachur";
 
   return (
