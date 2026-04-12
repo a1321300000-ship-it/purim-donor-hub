@@ -11,6 +11,8 @@ import DataSettings from "@/pages/DataSettings";
 import BachurimList from "@/pages/BachurimList";
 import AddBachur from "@/pages/AddBachur";
 import BachurimAssign from "@/pages/BachurimAssign";
+import DonorMapping from "@/pages/DonorMapping";
+import GroupManagement from "@/pages/GroupManagement";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +32,8 @@ const App = () => (
             <Route path="/bachurim" element={<BachurimList />} />
             <Route path="/add-bachur" element={<AddBachur />} />
             <Route path="/bachurim-assign" element={<BachurimAssign />} />
+            <Route path="/donor-mapping" element={<DonorMapping />} />
+            <Route path="/groups" element={<GroupManagement />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

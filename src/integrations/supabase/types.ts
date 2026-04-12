@@ -65,6 +65,30 @@ export type Database = {
         }
         Relationships: []
       }
+      donor_groups: {
+        Row: {
+          created_at: string
+          id: number
+          name: string
+          task_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          name?: string
+          task_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          name?: string
+          task_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       donors: {
         Row: {
           address: string
@@ -121,6 +145,81 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      group_bachur_assignments: {
+        Row: {
+          bachur_id: number
+          created_at: string
+          group_id: number
+          id: number
+        }
+        Insert: {
+          bachur_id: number
+          created_at?: string
+          group_id: number
+          id?: never
+        }
+        Update: {
+          bachur_id?: number
+          created_at?: string
+          group_id?: number
+          id?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_bachur_assignments_bachur_id_fkey"
+            columns: ["bachur_id"]
+            isOneToOne: false
+            referencedRelation: "bachurim"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_bachur_assignments_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "donor_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_members: {
+        Row: {
+          created_at: string
+          donor_id: number
+          group_id: number
+          id: number
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          donor_id: number
+          group_id: number
+          id?: never
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          donor_id?: number
+          group_id?: number
+          id?: never
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "donor_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       select_options: {
         Row: {
