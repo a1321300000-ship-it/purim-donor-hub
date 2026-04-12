@@ -85,7 +85,7 @@ export function useCreateGroup() {
 export function useUpdateGroup() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: number; updates: Partial<DonorGroup> }) => {
+    mutationFn: async ({ id, updates }: { id: number; updates: { name?: string; task_type?: string } }) => {
       const { error } = await supabase.from("donor_groups").update(updates).eq("id", id);
       if (error) throw error;
     },
