@@ -68,6 +68,7 @@ export type Database = {
       donors: {
         Row: {
           address: string
+          archived_at: string | null
           city: string
           created_at: string
           donation_notes: Json
@@ -85,6 +86,7 @@ export type Database = {
         }
         Insert: {
           address?: string
+          archived_at?: string | null
           city?: string
           created_at?: string
           donation_notes?: Json
@@ -102,6 +104,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          archived_at?: string | null
           city?: string
           created_at?: string
           donation_notes?: Json

@@ -76,6 +76,7 @@ export default function DonorManagement() {
 
   const filtered = useMemo(() => {
     return donors.filter((d) => {
+      if (d.archived_at) return false;
       for (const key of columnFields) {
         if (filters[key] && !(d as any)[key]?.includes(filters[key])) return false;
       }
@@ -177,7 +178,11 @@ export default function DonorManagement() {
                       <DropdownMenuItem onClick={() => setEditDonor({ ...donor, donations: { ...donor.donations }, donation_notes: { ...donor.donation_notes } })}>
                         <Pencil className="h-4 w-4 ml-2" /> עריכה
                       </DropdownMenuItem>
-                      <DropdownMenuItem disabled><Archive className="h-4 w-4 ml-2" /> העברה לארכיון</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        updateDonor.mutate({ id: donor.id, updates: { archived_at: new Date().toISOString() } }, {
+                          onSuccess: () => toast.success("התורם הועבר לארכיון"),
+                        });
+                      }}><Archive className="h-4 w-4 ml-2" /> העברה לארכיון</DropdownMenuItem>
                       <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(donor.id)}>
                         <Trash2 className="h-4 w-4 ml-2" /> מחיקה
                       </DropdownMenuItem>

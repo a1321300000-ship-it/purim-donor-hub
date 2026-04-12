@@ -92,18 +92,13 @@ const ALL_DONOR_FIELDS = [
   { key: "notes", label: "הערות" },
 ];
 
-// All bachur fields including hidden ones
+// All bachur fields - ONLY these fields
 const ALL_BACHUR_FIELDS = [
   { key: "id", label: "מזהה" },
   { key: "full_name", label: "שם מלא" },
   { key: "father_name", label: "שם האב" },
-  { key: "phone", label: "טלפון" },
-  { key: "city", label: "עיר" },
-  { key: "address", label: "כתובת" },
-  { key: "floor", label: "קומה" },
   { key: "yeshiva", label: "ישיבה" },
   { key: "shiur", label: "שיעור" },
-  { key: "is_new", label: "חדש" },
   { key: "notes", label: "הערות" },
 ];
 
@@ -132,7 +127,10 @@ export default function DataSettings() {
   ];
   const bachurExportFields = ALL_BACHUR_FIELDS;
 
-  const DONOR_FIELDS = getDonorFields(yearsList);
+  const DONOR_FIELDS = [
+    ...getDonorFields(yearsList),
+    ...yearsList.map((y) => ({ key: `donation_note_${y}`, label: `הערות ${y}` })),
+  ];
   const BACHUR_FIELDS = getBachurFields();
 
   const [importTarget, setImportTarget] = useState("donors");
@@ -239,6 +237,9 @@ export default function DataSettings() {
           const val = row[fileCol] || "";
           if (yearsList.includes(fieldKey)) {
             d.donations[fieldKey] = Number(val) || 0;
+          } else if (fieldKey.startsWith("donation_note_")) {
+            const year = fieldKey.replace("donation_note_", "");
+            d.donation_notes[year] = val;
           } else if (fieldKey === "is_new") {
             d.is_new = val === "true" || val === "1" || val === "כן" || val.toLowerCase() === "yes" || val === "✓" || val === "✔";
           } else if (fieldKey !== "id" && fieldKey in d) {

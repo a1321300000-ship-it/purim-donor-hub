@@ -14,6 +14,7 @@ export interface Donor {
   notes: string;
   donations: Record<string, number>;
   donation_notes: Record<string, string>;
+  archived_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -172,7 +173,7 @@ export async function addDonor(donor: Omit<Donor, "id" | "created_at" | "updated
 }
 
 export async function updateDonor(id: number, updates: Partial<Omit<Donor, "id">>): Promise<void> {
-  const fields = ["title", "full_name", "father_name", "phone", "city", "address", "house_number", "floor", "is_new", "notes", "donations", "donation_notes"] as const;
+  const fields = ["title", "full_name", "father_name", "phone", "city", "address", "house_number", "floor", "is_new", "notes", "donations", "donation_notes", "archived_at"] as const;
   const payload: any = {};
   fields.forEach((f) => {
     if ((updates as any)[f] !== undefined) payload[f] = (updates as any)[f];

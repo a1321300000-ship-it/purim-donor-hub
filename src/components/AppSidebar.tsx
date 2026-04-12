@@ -1,4 +1,4 @@
-import { Users, UserPlus, GraduationCap, ChevronDown, Settings, List, UserCheck, UserRoundPlus } from "lucide-react";
+import { Users, UserPlus, GraduationCap, ChevronDown, Settings, List, UserCheck, UserRoundPlus, Archive } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -11,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 const donorSubItems = [
   { title: "רשימת תורמים", url: "/", icon: List },
   { title: "הוסף תורם", url: "/add-donor", icon: UserPlus },
+  { title: "ארכיון", url: "/donor-archive", icon: Archive },
 ];
 
 const bachurimSubItems = [
@@ -23,7 +24,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const isDonorSection = location.pathname === "/" || location.pathname === "/add-donor";
+  const isDonorSection = location.pathname === "/" || location.pathname === "/add-donor" || location.pathname === "/donor-archive";
   const isBachurimSection = location.pathname.startsWith("/bachurim") || location.pathname === "/add-bachur";
 
   return (

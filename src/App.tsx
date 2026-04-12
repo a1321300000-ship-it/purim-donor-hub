@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/Layout";
 import DonorManagement from "@/pages/DonorManagement";
 import AddDonor from "@/pages/AddDonor";
+import DonorArchive from "@/pages/DonorArchive";
 import DataSettings from "@/pages/DataSettings";
 import BachurimList from "@/pages/BachurimList";
 import AddBachur from "@/pages/AddBachur";
@@ -23,6 +24,7 @@ const App = () => (
         <Layout>
           <Routes>
             <Route path="/" element={<DonorManagement />} />
+            <Route path="/donor-archive" element={<DonorArchive />} />
             <Route path="/add-donor" element={<AddDonor />} />
             <Route path="/data-settings" element={<DataSettings />} />
             <Route path="/bachurim" element={<BachurimList />} />
