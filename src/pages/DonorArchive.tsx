@@ -1,10 +1,14 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useDonors, useUpdateDonor } from "@/hooks/useDonors";
 import { useSettings } from "@/hooks/useSettings";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ArchiveRestore } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,16 +16,18 @@ export default function DonorArchive() {
   const { data: donors = [], isLoading } = useDonors();
   const { data: settings } = useSettings();
   const updateDonor = useUpdateDonor();
+  const [restoreId, setRestoreId] = useState<number | null>(null);
 
   const yearsList = settings?.years_list || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'];
   const currentYear = settings?.current_year || yearsList[yearsList.length - 1];
 
   const archived = useMemo(() => donors.filter((d) => d.archived_at), [donors]);
 
-  const handleRestore = (id: number) => {
+  const handleRestore = () => {
+    if (restoreId === null) return;
     updateDonor.mutate(
-      { id, updates: { archived_at: null } },
-      { onSuccess: () => toast.success("התורם שוחזר בהצלחה") }
+      { id: restoreId, updates: { archived_at: null } },
+      { onSuccess: () => { toast.success("התורם שוחזר בהצלחה"); setRestoreId(null); } }
     );
   };
 
@@ -56,7 +62,7 @@ export default function DonorArchive() {
                 </TableCell>
                 <TableCell className="px-2 max-w-[120px] truncate text-xs">{donor.notes || "—"}</TableCell>
                 <TableCell className="px-1">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRestore(donor.id)} title="שחזור">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRestoreId(donor.id)} title="שחזור">
                     <ArchiveRestore className="h-4 w-4" />
                   </Button>
                 </TableCell>
@@ -73,6 +79,19 @@ export default function DonorArchive() {
         </Table>
       </div>
       <div className="text-sm text-muted-foreground">סה״כ: {archived.length} תורמים בארכיון</div>
+
+      <AlertDialog open={restoreId !== null} onOpenChange={(o) => !o && setRestoreId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>שחזור תורם מהארכיון</AlertDialogTitle>
+            <AlertDialogDescription>האם אתה בטוח שברצונך לשחזר תורם זה מהארכיון?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestore}>שחזר</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
