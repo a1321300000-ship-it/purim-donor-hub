@@ -1,0 +1,1 @@
+ALTER TABLE public.donors ADD COLUMN archived_at timestamptz DEFAULT NULL;
