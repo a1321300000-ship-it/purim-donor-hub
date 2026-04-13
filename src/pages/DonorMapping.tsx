@@ -15,7 +15,14 @@ import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 
-// Simple geocoding cache using Nominatim
+// Fix default marker icons
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
 const geoCache: Record<string, [number, number] | null> = {};
 
 async function geocodeAddress(city: string, address: string, houseNumber: string): Promise<[number, number] | null> {
@@ -31,7 +38,6 @@ async function geocodeAddress(city: string, address: string, houseNumber: string
       geoCache[key] = result;
       return result;
     }
-    // Fallback: try city only
     const q2 = encodeURIComponent(`${city}, ישראל`);
     const res2 = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q2}&limit=1&countrycodes=il`);
     const data2 = await res2.json();
@@ -64,9 +70,6 @@ export default function DonorMapping() {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
 
-  const currentYear = settings?.current_year || 'תשפ"ה';
-
-  // Filter: active donors not yet assigned to a group for this task type
   const assignedDonorIds = useMemo(() => new Set(allMembers.map((m) => m.donor_id)), [allMembers]);
   
   const activeDonors = useMemo(
@@ -87,7 +90,6 @@ export default function DonorMapping() {
         if (!donor.city) continue;
         const coords = await geocodeAddress(donor.city, donor.address, donor.house_number);
         if (coords) newMap.set(donor.id, coords);
-        // Rate limiting for Nominatim
         await new Promise((r) => setTimeout(r, 200));
       }
       if (!cancelled) {
@@ -148,12 +150,13 @@ export default function DonorMapping() {
 
   const handleCreateGroups = () => {
     const donorsWithCoords = activeDonors.filter((d) => geocodedDonors.has(d.id));
-    if (donorsWithCoords.length === 0) {
-      toast.error("אין תורמים עם כתובות תקינות ליצירת קבוצות");
+    const donorsWithoutCoords = activeDonors.filter((d) => !geocodedDonors.has(d.id));
+
+    if (donorsWithCoords.length === 0 && donorsWithoutCoords.length === 0) {
+      toast.error("אין תורמים ליצירת קבוצות");
       return;
     }
 
-    // Simple clustering by proximity
     const remaining = [...donorsWithCoords];
     const groups: { name: string; task_type: string; members: { donor_id: number; sort_order: number }[] }[] = [];
     let groupIdx = 1;
@@ -163,7 +166,6 @@ export default function DonorMapping() {
       const seedCoords = geocodedDonors.get(seed.id)!;
       const group: Donor[] = [seed];
 
-      // Find nearest donors
       while (group.length < groupSize && remaining.length > 0) {
         let nearestIdx = 0;
         let nearestDist = Infinity;
@@ -188,17 +190,17 @@ export default function DonorMapping() {
       groupIdx++;
     }
 
-    // Also add donors without coords
-    const donorsWithoutCoords = activeDonors.filter((d) => !geocodedDonors.has(d.id));
-    for (let i = 0; i < donorsWithoutCoords.length; i += groupSize) {
-      const chunk = donorsWithoutCoords.slice(i, i + groupSize);
-      const streets = [...new Set(chunk.map((d) => d.address).filter(Boolean))].slice(0, 2).join(", ");
-      groups.push({
-        name: `קבוצה ${groupIdx} - ${streets || "ללא כתובת"} - ${taskType}`,
-        task_type: taskType,
-        members: chunk.map((d, j) => ({ donor_id: d.id, sort_order: j })),
-      });
-      groupIdx++;
+    // Donors without coords go into "תקלת שיבוץ" group
+    if (donorsWithoutCoords.length > 0) {
+      for (let i = 0; i < donorsWithoutCoords.length; i += groupSize) {
+        const chunk = donorsWithoutCoords.slice(i, i + groupSize);
+        groups.push({
+          name: `תקלת שיבוץ ${groups.length > 0 ? groupIdx : 1} - ${taskType}`,
+          task_type: taskType,
+          members: chunk.map((d, j) => ({ donor_id: d.id, sort_order: j })),
+        });
+        groupIdx++;
+      }
     }
 
     createGroupsBatch.mutate(groups, {
