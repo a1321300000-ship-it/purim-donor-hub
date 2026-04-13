@@ -251,7 +251,7 @@ export default function DonorManagement() {
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto z-50">
           <DialogHeader><DialogTitle>עריכת תורם #{editDonor?.id}</DialogTitle></DialogHeader>
           {editDonor && (
-            <div className="space-y-4">
+            <div className="space-y-4" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); } }}>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>תואר</Label>
