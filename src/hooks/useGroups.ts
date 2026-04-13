@@ -59,10 +59,10 @@ export function useAllGroupMembers() {
 
 export function useGroupBachurAssignments(groupId?: number) {
   return useQuery<GroupBachurAssignment[]>({
-    queryKey: ["group_bachur_assignments", groupId],
+    queryKey: ["group_bachur_assignments", groupId ?? "all"],
     queryFn: async () => {
       let q = supabase.from("group_bachur_assignments").select("*");
-      if (groupId) q = q.eq("group_id", groupId);
+      if (groupId !== undefined) q = q.eq("group_id", groupId);
       const { data, error } = await q;
       if (error) throw error;
       return data as unknown as GroupBachurAssignment[];
