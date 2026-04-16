@@ -223,6 +223,7 @@ export default function GroupManagement() {
                   <TableRow key={g.id} className={`cursor-pointer ${selectedGroupId === g.id ? "bg-primary/10" : idx % 2 === 0 ? "bg-card" : "bg-muted/20"}`} onClick={() => setSelectedGroupId(g.id)}>
                     <TableCell className="px-2 font-medium">{g.name}</TableCell>
                     <TableCell className="px-2">{g.task_type}</TableCell>
+                    <TableCell className="px-2">{g.transport_type || "—"}</TableCell>
                     <TableCell className="text-center px-2">{memberCountMap.get(g.id) || 0}</TableCell>
                     <TableCell className="px-2 text-xs max-w-[200px] truncate">{bachurNamesMap.get(g.id) || "—"}</TableCell>
                     <TableCell className="px-1">
@@ -245,7 +246,7 @@ export default function GroupManagement() {
                 ))}
                 {filteredGroups.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">אין קבוצות. צור קבוצות מדף המיפוי.</TableCell>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">אין קבוצות. צור קבוצות מדף המיפוי.</TableCell>
                   </TableRow>
                 )}
               </TableBody>
