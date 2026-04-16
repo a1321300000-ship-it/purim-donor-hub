@@ -624,6 +624,42 @@ export default function DataSettings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={deleteAllGroupsOpen} onOpenChange={setDeleteAllGroupsOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>האם אתה בטוח שברצונך לבצע פעולה זו?</AlertDialogTitle>
+            <AlertDialogDescription>כל הקבוצות ({groupsData.length}) יימחקו לצמיתות כולל כל השיוכים. לא ניתן לבטל זאת.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              deleteAllGroups.mutate(undefined, {
+                onSuccess: () => { toast.success("כל הקבוצות נמחקו"); setDeleteAllGroupsOpen(false); },
+                onError: () => toast.error("שגיאה במחיקת הקבוצות"),
+              });
+            }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">מחק הכל</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={resetGroupSeqOpen} onOpenChange={setResetGroupSeqOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>האם אתה בטוח שברצונך לבצע פעולה זו?</AlertDialogTitle>
+            <AlertDialogDescription>מונה ה-ID של קבוצות יאופס ל-1. פעולה זו מיועדת לשימוש לפני השקת המערכת בלבד.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              resetGroupSeq.mutate(undefined, {
+                onSuccess: () => { toast.success("מונה ID קבוצות אופס ל-1"); setResetGroupSeqOpen(false); },
+                onError: () => toast.error("שגיאה באיפוס המונה"),
+              });
+            }}>אפס</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
