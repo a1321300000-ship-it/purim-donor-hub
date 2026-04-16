@@ -195,3 +195,32 @@ export function useCreateGroupsBatch() {
     },
   });
 }
+
+export function useDeleteAllGroups() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error: e1 } = await supabase.from("group_bachur_assignments").delete().neq("id", 0);
+      if (e1) throw e1;
+      const { error: e2 } = await supabase.from("group_members").delete().neq("id", 0);
+      if (e2) throw e2;
+      const { error: e3 } = await supabase.from("donor_groups").delete().neq("id", 0);
+      if (e3) throw e3;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["donor_groups"] });
+      qc.invalidateQueries({ queryKey: ["group_members"] });
+      qc.invalidateQueries({ queryKey: ["group_members_all"] });
+      qc.invalidateQueries({ queryKey: ["group_bachur_assignments"] });
+    },
+  });
+}
+
+export function useResetGroupSequence() {
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase.rpc as any)("reset_group_sequence");
+      if (error) throw error;
+    },
+  });
+}
