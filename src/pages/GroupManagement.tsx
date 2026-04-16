@@ -212,6 +212,7 @@ export default function GroupManagement() {
                 <TableRow className="bg-primary text-primary-foreground">
                   <TableHead className="text-right font-semibold px-2 text-primary-foreground">שם קבוצה</TableHead>
                   <TableHead className="text-right font-semibold px-2 text-primary-foreground">סוג משימה</TableHead>
+                  <TableHead className="text-right font-semibold px-2 text-primary-foreground">סוג שינוע</TableHead>
                   <TableHead className="text-center font-semibold px-2 text-primary-foreground">תורמים</TableHead>
                   <TableHead className="text-right font-semibold px-2 text-primary-foreground">בחורים אחראים</TableHead>
                   <TableHead className="w-40 px-1 text-primary-foreground">פעולות</TableHead>
