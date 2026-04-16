@@ -292,6 +292,15 @@ export default function DonorMapping() {
               </Select>
             </div>
             <div className="space-y-1">
+              <Label>סוג שינוע</Label>
+              <Select value={transportType} onValueChange={setTransportType}>
+                <SelectTrigger className="w-36"><SelectValue placeholder="בחר סוג שינוע" /></SelectTrigger>
+                <SelectContent>
+                  {TRANSPORT_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
               <Label>תורמים לקבוצה</Label>
               <Input type="number" className="w-24" value={groupSize} onChange={(e) => setGroupSize(Number(e.target.value) || 10)} min={2} max={50} />
             </div>
