@@ -3,6 +3,7 @@ import { useSettings, useSaveSetting } from "@/hooks/useSettings";
 import { useDonors, useAddDonorsBatch, useDeleteDonorsBatch, useResetDonorSequence } from "@/hooks/useDonors";
 import { useBachurim, useAddBachurimBatch, useDeleteBachurimBatch, useResetBachurSequence } from "@/hooks/useBachurim";
 import { useSelectOptions } from "@/hooks/useSelectOptions";
+import { useGroups, useDeleteAllGroups, useResetGroupSequence } from "@/hooks/useGroups";
 import { getDonorFields, getBachurFields, Donor, Bachur } from "@/lib/store";
 import { ListManager } from "@/components/ListManager";
 import { Button } from "@/components/ui/button";
@@ -115,7 +116,9 @@ export default function DataSettings() {
   const deleteBachurimBatch = useDeleteBachurimBatch();
   const resetDonorSeq = useResetDonorSequence();
   const resetBachurSeq = useResetBachurSequence();
-
+  const { data: groupsData = [] } = useGroups();
+  const deleteAllGroups = useDeleteAllGroups();
+  const resetGroupSeq = useResetGroupSequence();
   const yearsList = settings?.years_list || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'];
   const currentYear = settings?.current_year || 'תשפ"ה';
   const yearCount = settings?.year_count || 3;
@@ -151,6 +154,8 @@ export default function DataSettings() {
   const [resetDonorSeqOpen, setResetDonorSeqOpen] = useState(false);
   const [deleteAllBachurimOpen, setDeleteAllBachurimOpen] = useState(false);
   const [resetBachurSeqOpen, setResetBachurSeqOpen] = useState(false);
+  const [deleteAllGroupsOpen, setDeleteAllGroupsOpen] = useState(false);
+  const [resetGroupSeqOpen, setResetGroupSeqOpen] = useState(false);
 
   const activeFields = exportTarget === "donors" ? donorExportFields : bachurExportFields;
   const importFields = importTarget === "donors" ? DONOR_FIELDS : BACHUR_FIELDS;
@@ -413,6 +418,25 @@ export default function DataSettings() {
         </CardContent>
       </Card>
 
+      {/* Group Management Zone */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Trash2 className="h-5 w-5" />ניהול קבוצות</CardTitle>
+          <CardDescription>מחיקת כל הקבוצות ואיפוס מונה ID של קבוצות</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button variant="destructive" size="sm" onClick={() => setDeleteAllGroupsOpen(true)}>
+              <Trash2 className="h-4 w-4 ml-1" /> מחיקת כל הקבוצות
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setResetGroupSeqOpen(true)}>
+              <RotateCcw className="h-4 w-4 ml-1" /> איפוס מונה ID
+            </Button>
+          </div>
+          <p className="text-xs text-destructive font-medium">⚠️ זהירות: פעולות אלו אינן הפיכות. נתונים שנמחקו לא ניתנים לשחזור.</p>
+        </CardContent>
+      </Card>
+
       {/* List Manager */}
       <ListManager />
 
@@ -597,6 +621,42 @@ export default function DataSettings() {
           <AlertDialogFooter>
             <AlertDialogCancel>ביטול</AlertDialogCancel>
             <AlertDialogAction onClick={handleResetBachurSeq}>אפס</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteAllGroupsOpen} onOpenChange={setDeleteAllGroupsOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>האם אתה בטוח שברצונך לבצע פעולה זו?</AlertDialogTitle>
+            <AlertDialogDescription>כל הקבוצות ({groupsData.length}) יימחקו לצמיתות כולל כל השיוכים. לא ניתן לבטל זאת.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              deleteAllGroups.mutate(undefined, {
+                onSuccess: () => { toast.success("כל הקבוצות נמחקו"); setDeleteAllGroupsOpen(false); },
+                onError: () => toast.error("שגיאה במחיקת הקבוצות"),
+              });
+            }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">מחק הכל</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={resetGroupSeqOpen} onOpenChange={setResetGroupSeqOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>האם אתה בטוח שברצונך לבצע פעולה זו?</AlertDialogTitle>
+            <AlertDialogDescription>מונה ה-ID של קבוצות יאופס ל-1. פעולה זו מיועדת לשימוש לפני השקת המערכת בלבד.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              resetGroupSeq.mutate(undefined, {
+                onSuccess: () => { toast.success("מונה ID קבוצות אופס ל-1"); setResetGroupSeqOpen(false); },
+                onError: () => toast.error("שגיאה באיפוס המונה"),
+              });
+            }}>אפס</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

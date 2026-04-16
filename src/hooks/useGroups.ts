@@ -5,6 +5,7 @@ export interface DonorGroup {
   id: number;
   name: string;
   task_type: string;
+  transport_type: string;
   created_at: string;
   updated_at: string;
 }
@@ -73,7 +74,7 @@ export function useGroupBachurAssignments(groupId?: number) {
 export function useCreateGroup() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (group: { name: string; task_type: string }) => {
+    mutationFn: async (group: { name: string; task_type: string; transport_type?: string }) => {
       const { data, error } = await supabase.from("donor_groups").insert(group).select().single();
       if (error) throw error;
       return data as unknown as DonorGroup;
@@ -85,7 +86,7 @@ export function useCreateGroup() {
 export function useUpdateGroup() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: number; updates: { name?: string; task_type?: string } }) => {
+    mutationFn: async ({ id, updates }: { id: number; updates: { name?: string; task_type?: string; transport_type?: string } }) => {
       const { error } = await supabase.from("donor_groups").update(updates).eq("id", id);
       if (error) throw error;
     },
@@ -174,9 +175,9 @@ export function useUnassignBachur() {
 export function useCreateGroupsBatch() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (groups: { name: string; task_type: string; members: { donor_id: number; sort_order: number }[] }[]) => {
+    mutationFn: async (groups: { name: string; task_type: string; transport_type?: string; members: { donor_id: number; sort_order: number }[] }[]) => {
       for (const g of groups) {
-        const { data, error } = await supabase.from("donor_groups").insert({ name: g.name, task_type: g.task_type }).select().single();
+        const { data, error } = await supabase.from("donor_groups").insert({ name: g.name, task_type: g.task_type, transport_type: g.transport_type || "" }).select().single();
         if (error) throw error;
         const group = data as unknown as DonorGroup;
         if (g.members.length > 0) {
@@ -191,6 +192,35 @@ export function useCreateGroupsBatch() {
       qc.invalidateQueries({ queryKey: ["donor_groups"] });
       qc.invalidateQueries({ queryKey: ["group_members"] });
       qc.invalidateQueries({ queryKey: ["group_members_all"] });
+    },
+  });
+}
+
+export function useDeleteAllGroups() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error: e1 } = await supabase.from("group_bachur_assignments").delete().neq("id", 0);
+      if (e1) throw e1;
+      const { error: e2 } = await supabase.from("group_members").delete().neq("id", 0);
+      if (e2) throw e2;
+      const { error: e3 } = await supabase.from("donor_groups").delete().neq("id", 0);
+      if (e3) throw e3;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["donor_groups"] });
+      qc.invalidateQueries({ queryKey: ["group_members"] });
+      qc.invalidateQueries({ queryKey: ["group_members_all"] });
+      qc.invalidateQueries({ queryKey: ["group_bachur_assignments"] });
+    },
+  });
+}
+
+export function useResetGroupSequence() {
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase.rpc as any)("reset_group_sequence");
+      if (error) throw error;
     },
   });
 }

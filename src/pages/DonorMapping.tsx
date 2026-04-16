@@ -54,6 +54,19 @@ async function geocodeAddress(city: string, address: string, houseNumber: string
 }
 
 const TASK_TYPES = ['מת"א', 'י"ד', 'ט"ו'];
+const TRANSPORT_TYPES = [
+  { value: "רגלי", label: "רגלי" },
+  { value: "נסיעה/טנדר", label: "נסיעה/טנדר" },
+];
+
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000; // meters
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default function DonorMapping() {
   const { data: donors = [] } = useDonors();
@@ -62,6 +75,7 @@ export default function DonorMapping() {
   const createGroupsBatch = useCreateGroupsBatch();
 
   const [taskType, setTaskType] = useState('מת"א');
+  const [transportType, setTransportType] = useState("");
   const [groupSize, setGroupSize] = useState(10);
   const [geocodedDonors, setGeocodedDonors] = useState<Map<number, [number, number]>>(new Map());
   const [isGeocoding, setIsGeocoding] = useState(false);
@@ -149,6 +163,11 @@ export default function DonorMapping() {
   }, [geocodedDonors, activeDonors]);
 
   const handleCreateGroups = () => {
+    if (!transportType) {
+      toast.error("יש לבחור סוג שינוע לפני יצירת קבוצות");
+      return;
+    }
+
     const donorsWithCoords = activeDonors.filter((d) => geocodedDonors.has(d.id));
     const donorsWithoutCoords = activeDonors.filter((d) => !geocodedDonors.has(d.id));
 
@@ -157,46 +176,92 @@ export default function DonorMapping() {
       return;
     }
 
+    const maxRadius = transportType === "רגלי" ? 800 : 10000; // 800m walking, 10km driving
     const remaining = [...donorsWithCoords];
-    const groups: { name: string; task_type: string; members: { donor_id: number; sort_order: number }[] }[] = [];
+    const groups: { name: string; task_type: string; transport_type: string; members: { donor_id: number; sort_order: number }[] }[] = [];
+    const remoteDonors: Donor[] = [];
     let groupIdx = 1;
 
     while (remaining.length > 0) {
       const seed = remaining.shift()!;
       const seedCoords = geocodedDonors.get(seed.id)!;
+      const seedCity = seed.city;
       const group: Donor[] = [seed];
 
-      while (group.length < groupSize && remaining.length > 0) {
-        let nearestIdx = 0;
-        let nearestDist = Infinity;
-        for (let i = 0; i < remaining.length; i++) {
-          const c = geocodedDonors.get(remaining[i].id);
-          if (!c) continue;
-          const dist = Math.sqrt((c[0] - seedCoords[0]) ** 2 + (c[1] - seedCoords[1]) ** 2);
-          if (dist < nearestDist) {
-            nearestDist = dist;
-            nearestIdx = i;
-          }
+      const candidates: number[] = [];
+      for (let i = 0; i < remaining.length; i++) {
+        const c = geocodedDonors.get(remaining[i].id);
+        if (!c) continue;
+        // City blocking: never mix cities
+        if (remaining[i].city !== seedCity) continue;
+        const dist = haversineDistance(seedCoords[0], seedCoords[1], c[0], c[1]);
+        if (dist <= maxRadius) {
+          candidates.push(i);
         }
-        group.push(remaining.splice(nearestIdx, 1)[0]);
+      }
+
+      // Sort candidates by distance to seed
+      candidates.sort((a, b) => {
+        const ca = geocodedDonors.get(remaining[a].id)!;
+        const cb = geocodedDonors.get(remaining[b].id)!;
+        const da = haversineDistance(seedCoords[0], seedCoords[1], ca[0], ca[1]);
+        const db = haversineDistance(seedCoords[0], seedCoords[1], cb[0], cb[1]);
+        return da - db;
+      });
+
+      // Take up to groupSize - 1 nearest candidates
+      const taken = new Set<number>();
+      for (const idx of candidates) {
+        if (group.length >= groupSize) break;
+        group.push(remaining[idx]);
+        taken.add(idx);
+      }
+      // Remove taken from remaining (reverse order to maintain indices)
+      const sortedTaken = [...taken].sort((a, b) => b - a);
+      for (const idx of sortedTaken) remaining.splice(idx, 1);
+
+      // If seed has no nearby neighbors, it's a remote donor
+      if (group.length === 1 && remaining.length > 0) {
+        // Check if there are other donors in the same city still remaining
+        const sameCityIdx = remaining.findIndex((d) => d.city === seedCity);
+        if (sameCityIdx === -1) {
+          remoteDonors.push(seed);
+          continue;
+        }
       }
 
       const streets = [...new Set(group.map((d) => d.address).filter(Boolean))].slice(0, 2).join(", ");
       groups.push({
         name: `קבוצה ${groupIdx} - ${streets || "ללא רחוב"} - ${taskType}`,
         task_type: taskType,
+        transport_type: transportType,
         members: group.map((d, i) => ({ donor_id: d.id, sort_order: i })),
       });
       groupIdx++;
     }
 
-    // Donors without coords go into "תקלת שיבוץ" group
+    // Donors without coords → "תקלת שיבוץ"
     if (donorsWithoutCoords.length > 0) {
       for (let i = 0; i < donorsWithoutCoords.length; i += groupSize) {
         const chunk = donorsWithoutCoords.slice(i, i + groupSize);
         groups.push({
-          name: `תקלת שיבוץ ${groups.length > 0 ? groupIdx : 1} - ${taskType}`,
+          name: `תקלת שיבוץ ${groupIdx} - ${taskType}`,
           task_type: taskType,
+          transport_type: transportType,
+          members: chunk.map((d, j) => ({ donor_id: d.id, sort_order: j })),
+        });
+        groupIdx++;
+      }
+    }
+
+    // Remote donors → "ערים מרוחקות / לטיפול ידני"
+    if (remoteDonors.length > 0) {
+      for (let i = 0; i < remoteDonors.length; i += groupSize) {
+        const chunk = remoteDonors.slice(i, i + groupSize);
+        groups.push({
+          name: `ערים מרוחקות / לטיפול ידני ${groupIdx} - ${taskType}`,
+          task_type: taskType,
+          transport_type: transportType,
           members: chunk.map((d, j) => ({ donor_id: d.id, sort_order: j })),
         });
         groupIdx++;
@@ -223,6 +288,15 @@ export default function DonorMapping() {
                 <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {TASK_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>סוג שינוע</Label>
+              <Select value={transportType} onValueChange={setTransportType}>
+                <SelectTrigger className="w-36"><SelectValue placeholder="בחר סוג שינוע" /></SelectTrigger>
+                <SelectContent>
+                  {TRANSPORT_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
