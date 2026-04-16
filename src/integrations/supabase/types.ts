@@ -71,6 +71,7 @@ export type Database = {
           id: number
           name: string
           task_type: string
+          transport_type: string
           updated_at: string
         }
         Insert: {
@@ -78,6 +79,7 @@ export type Database = {
           id?: never
           name?: string
           task_type?: string
+          transport_type?: string
           updated_at?: string
         }
         Update: {
@@ -85,6 +87,7 @@ export type Database = {
           id?: never
           name?: string
           task_type?: string
+          transport_type?: string
           updated_at?: string
         }
         Relationships: []
@@ -270,6 +273,7 @@ export type Database = {
     Functions: {
       reset_bachur_sequence: { Args: never; Returns: undefined }
       reset_donor_sequence: { Args: never; Returns: undefined }
+      reset_group_sequence: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
