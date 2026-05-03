@@ -393,7 +393,40 @@ export default function DataSettings() {
         </CardContent>
       </Card>
 
-      {/* Donor Management Zone */}
+      {/* System Security */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5" />אבטחת מערכת</CardTitle>
+          <CardDescription>עדכון קוד הגישה למערכת</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Label>קוד גישה נוכחי</Label>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Input
+                type={showPin ? "text" : "password"}
+                inputMode="numeric"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, "").slice(0, 12))}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSavePin(); } }}
+                className="font-mono tracking-widest pl-10"
+                dir="ltr"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPin((s) => !s)}
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="הצג/הסתר קוד"
+              >
+                {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            <Button onClick={handleSavePin} disabled={saveSetting.isPending}>שמור</Button>
+          </div>
+          <p className="text-xs text-muted-foreground">לפחות 4 ספרות. הקוד יישאר קבוע עד לשינוי ידני.</p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Trash2 className="h-5 w-5" />ניהול תורמים</CardTitle>
