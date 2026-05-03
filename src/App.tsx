@@ -23,7 +23,7 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 const queryClient = new QueryClient();
 
 function AppRoutes() {
-  const { session, loading } = useAuth();
+  const { authenticated, loading } = useAuth();
 
   if (loading) {
     return (
