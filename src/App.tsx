@@ -8,7 +8,7 @@ import { Layout } from "@/components/Layout";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
 const Auth = lazy(() => import("@/pages/Auth"));
-const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+
 const DonorManagement = lazy(() => import("@/pages/DonorManagement"));
 const AddDonor = lazy(() => import("@/pages/AddDonor"));
 const DonorArchive = lazy(() => import("@/pages/DonorArchive"));
@@ -23,7 +23,7 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 const queryClient = new QueryClient();
 
 function AppRoutes() {
-  const { session, loading } = useAuth();
+  const { authenticated, loading } = useAuth();
 
   if (loading) {
     return (
@@ -36,8 +36,7 @@ function AppRoutes() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
       <Routes>
-        <Route path="/reset-password" element={<ResetPassword />} />
-        {!session ? (
+        {!authenticated ? (
           <Route path="*" element={<Auth />} />
         ) : (
           <Route element={<Layout />}>

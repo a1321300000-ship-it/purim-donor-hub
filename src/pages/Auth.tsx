@@ -1,114 +1,76 @@
-import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useRef, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Delete, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const { signIn } = useAuth();
+  const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const submit = async (code: string) => {
+    if (code.length === 0) return;
     setLoading(true);
-    try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("התחברת בהצלחה");
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        toast.success("נרשמת בהצלחה! בדוק את תיבת המייל לאימות.");
-      }
-    } catch (error: any) {
-      toast.error(error.message || "שגיאה בהתחברות");
-    } finally {
-      setLoading(false);
+    const ok = await signIn(code);
+    setLoading(false);
+    if (!ok) {
+      toast.error("קוד שגוי");
+      setPin("");
+      inputRef.current?.focus();
     }
   };
 
-  const handleForgotPassword = async () => {
-    if (!email) {
-      toast.error("הזן כתובת מייל תחילה");
-      return;
-    }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("קישור לאיפוס סיסמה נשלח למייל");
-    }
+  const onKey = (digit: string) => {
+    if (digit === "del") { setPin((p) => p.slice(0, -1)); return; }
+    if (digit === "ok") { submit(pin); return; }
+    setPin((p) => (p.length >= 12 ? p : p + digit));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submit(pin);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4" dir="rtl">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
+          <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+            <Lock className="h-6 w-6 text-primary" />
+          </div>
           <CardTitle className="text-2xl">מגבית פורים</CardTitle>
-          <CardDescription>{isLogin ? "התחברות למערכת" : "הרשמה למערכת"}</CardDescription>
+          <CardDescription>הזן את קוד הגישה</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">אימייל</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@example.com"
-                required
-                dir="ltr"
-              />
+            <input
+              ref={inputRef}
+              type="password"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 12))}
+              className="w-full text-center text-3xl tracking-[0.5em] font-mono h-14 rounded-md border border-input bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              dir="ltr"
+            />
+            <div className="grid grid-cols-3 gap-2">
+              {["1","2","3","4","5","6","7","8","9"].map((d) => (
+                <Button key={d} type="button" variant="outline" className="h-14 text-xl" onClick={() => onKey(d)}>{d}</Button>
+              ))}
+              <Button type="button" variant="outline" className="h-14 text-xl" onClick={() => onKey("del")}>
+                <Delete className="h-5 w-5" />
+              </Button>
+              <Button type="button" variant="outline" className="h-14 text-xl" onClick={() => onKey("0")}>0</Button>
+              <Button type="submit" className="h-14 text-base" disabled={loading || pin.length === 0}>
+                {loading ? "..." : "כניסה"}
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">סיסמה</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-                dir="ltr"
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "טוען..." : isLogin ? "התחבר" : "הירשם"}
-            </Button>
           </form>
-          <div className="mt-4 text-center space-y-2">
-            {isLogin && (
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                className="text-sm text-muted-foreground hover:text-primary underline"
-              >
-                שכחתי סיסמה
-              </button>
-            )}
-            <div>
-              <button
-                type="button"
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-primary hover:underline"
-              >
-                {isLogin ? "אין לך חשבון? הירשם" : "יש לך חשבון? התחבר"}
-              </button>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

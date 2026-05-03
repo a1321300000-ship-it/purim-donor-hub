@@ -47,6 +47,7 @@ export interface AppSettings {
   current_year: string;
   year_count: number;
   years_list: string[];
+  access_pin: string;
 }
 
 export const TITLE_OPTIONS = ["הרב", "הרה\"ג", "מר", "גב'", "ד\"ר", "פרופ'"];
@@ -63,6 +64,7 @@ export async function getSettings(): Promise<AppSettings> {
       current_year: 'תשפ"ה',
       year_count: 3,
       years_list: ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'],
+      access_pin: "9999",
     };
   }
 
@@ -73,6 +75,7 @@ export async function getSettings(): Promise<AppSettings> {
     current_year: (map.current_year as string) || 'תשפ"ה',
     year_count: (map.year_count as number) || 3,
     years_list: (map.years_list as string[]) || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'],
+    access_pin: (typeof map.access_pin === "string" ? map.access_pin : "9999"),
   };
 }
 

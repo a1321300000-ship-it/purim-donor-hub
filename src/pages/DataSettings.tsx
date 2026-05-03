@@ -16,7 +16,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Upload, Download, Settings, Trash2, RotateCcw } from "lucide-react";
+import { Upload, Download, Settings, Trash2, RotateCcw, Shield, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
@@ -156,6 +156,19 @@ export default function DataSettings() {
   const [resetBachurSeqOpen, setResetBachurSeqOpen] = useState(false);
   const [deleteAllGroupsOpen, setDeleteAllGroupsOpen] = useState(false);
   const [resetGroupSeqOpen, setResetGroupSeqOpen] = useState(false);
+
+  // Access PIN management
+  const currentPin = settings?.access_pin || "9999";
+  const [pinInput, setPinInput] = useState("");
+  const [showPin, setShowPin] = useState(false);
+  useEffect(() => { setPinInput(typeof currentPin === "string" ? currentPin : "9999"); }, [currentPin]);
+
+  const handleSavePin = async () => {
+    const clean = pinInput.replace(/\D/g, "");
+    if (clean.length < 4) { toast.error("הקוד חייב להכיל לפחות 4 ספרות"); return; }
+    await saveSetting.mutateAsync({ key: "access_pin", value: clean });
+    toast.success("קוד הגישה עודכן");
+  };
 
   const activeFields = exportTarget === "donors" ? donorExportFields : bachurExportFields;
   const importFields = importTarget === "donors" ? DONOR_FIELDS : BACHUR_FIELDS;
@@ -380,7 +393,40 @@ export default function DataSettings() {
         </CardContent>
       </Card>
 
-      {/* Donor Management Zone */}
+      {/* System Security */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5" />אבטחת מערכת</CardTitle>
+          <CardDescription>עדכון קוד הגישה למערכת</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Label>קוד גישה נוכחי</Label>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Input
+                type={showPin ? "text" : "password"}
+                inputMode="numeric"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, "").slice(0, 12))}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSavePin(); } }}
+                className="font-mono tracking-widest pl-10"
+                dir="ltr"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPin((s) => !s)}
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="הצג/הסתר קוד"
+              >
+                {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            <Button onClick={handleSavePin} disabled={saveSetting.isPending}>שמור</Button>
+          </div>
+          <p className="text-xs text-muted-foreground">לפחות 4 ספרות. הקוד יישאר קבוע עד לשינוי ידני.</p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Trash2 className="h-5 w-5" />ניהול תורמים</CardTitle>
