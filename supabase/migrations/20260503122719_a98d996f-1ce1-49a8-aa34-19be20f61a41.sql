@@ -1,0 +1,1 @@
+INSERT INTO public.settings (key, value) VALUES ('access_pin', '"9999"'::jsonb) ON CONFLICT (key) DO NOTHING;
