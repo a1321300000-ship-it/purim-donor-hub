@@ -8,7 +8,7 @@ import { Layout } from "@/components/Layout";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
 const Auth = lazy(() => import("@/pages/Auth"));
-const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+
 const DonorManagement = lazy(() => import("@/pages/DonorManagement"));
 const AddDonor = lazy(() => import("@/pages/AddDonor"));
 const DonorArchive = lazy(() => import("@/pages/DonorArchive"));
