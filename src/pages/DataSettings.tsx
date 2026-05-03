@@ -158,7 +158,7 @@ export default function DataSettings() {
   const [resetGroupSeqOpen, setResetGroupSeqOpen] = useState(false);
 
   // Access PIN management
-  const currentPin = (settings as any)?.access_pin || "9999";
+  const currentPin = settings?.access_pin || "9999";
   const [pinInput, setPinInput] = useState("");
   const [showPin, setShowPin] = useState(false);
   useEffect(() => { setPinInput(typeof currentPin === "string" ? currentPin : "9999"); }, [currentPin]);
