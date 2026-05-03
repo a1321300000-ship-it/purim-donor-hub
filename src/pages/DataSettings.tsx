@@ -157,6 +157,19 @@ export default function DataSettings() {
   const [deleteAllGroupsOpen, setDeleteAllGroupsOpen] = useState(false);
   const [resetGroupSeqOpen, setResetGroupSeqOpen] = useState(false);
 
+  // Access PIN management
+  const currentPin = (settings as any)?.access_pin || "9999";
+  const [pinInput, setPinInput] = useState("");
+  const [showPin, setShowPin] = useState(false);
+  useEffect(() => { setPinInput(typeof currentPin === "string" ? currentPin : "9999"); }, [currentPin]);
+
+  const handleSavePin = async () => {
+    const clean = pinInput.replace(/\D/g, "");
+    if (clean.length < 4) { toast.error("הקוד חייב להכיל לפחות 4 ספרות"); return; }
+    await saveSetting.mutateAsync({ key: "access_pin", value: clean });
+    toast.success("קוד הגישה עודכן");
+  };
+
   const activeFields = exportTarget === "donors" ? donorExportFields : bachurExportFields;
   const importFields = importTarget === "donors" ? DONOR_FIELDS : BACHUR_FIELDS;
 
