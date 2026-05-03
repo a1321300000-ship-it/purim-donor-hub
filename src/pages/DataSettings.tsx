@@ -16,7 +16,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Upload, Download, Settings, Trash2, RotateCcw } from "lucide-react";
+import { Upload, Download, Settings, Trash2, RotateCcw, Shield, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
