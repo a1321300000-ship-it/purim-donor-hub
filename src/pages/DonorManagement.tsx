@@ -150,9 +150,10 @@ export default function DonorManagement() {
                 <TableCell className="px-2 font-medium whitespace-nowrap">
                   <span className="flex items-center gap-1">
                     {donor.is_new && <Sparkles className="h-3.5 w-3.5 text-gold shrink-0" />}
-                    {donor.full_name}
+                    {donor.first_name}
                   </span>
                 </TableCell>
+                <TableCell className="px-2">{donor.last_name}</TableCell>
                 <TableCell className="px-2">{donor.father_name}</TableCell>
                 <TableCell className="px-2">{donor.city}</TableCell>
                 <TableCell className="px-2">{donor.address}</TableCell>
@@ -264,10 +265,15 @@ export default function DonorManagement() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>שם מלא</Label>
-                  <Input value={editDonor.full_name} onChange={(e) => setEditDonor({ ...editDonor, full_name: e.target.value })} />
+                  <Label>שם פרטי</Label>
+                  <Input value={editDonor.first_name} onChange={(e) => setEditDonor({ ...editDonor, first_name: e.target.value })} />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>שם משפחה</Label>
+                  <Input value={editDonor.last_name} onChange={(e) => setEditDonor({ ...editDonor, last_name: e.target.value })} />
+                </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>שם האב</Label>
