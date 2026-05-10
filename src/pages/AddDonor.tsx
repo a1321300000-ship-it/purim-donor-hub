@@ -22,6 +22,8 @@ export default function AddDonor() {
 
   const [form, setForm] = useState({
     title: "",
+    first_name: "",
+    last_name: "",
     full_name: "",
     father_name: "",
     phone: "",
@@ -52,8 +54,8 @@ export default function AddDonor() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.full_name.trim()) {
-      toast.error("יש להזין שם מלא");
+    if (!form.first_name.trim() && !form.last_name.trim()) {
+      toast.error("יש להזין שם פרטי או שם משפחה");
       return;
     }
     addDonor.mutate(form, {
@@ -73,7 +75,7 @@ export default function AddDonor() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label>תואר</Label>
                 <Select value={form.title} onValueChange={(v) => set("title", v)}>
@@ -86,8 +88,12 @@ export default function AddDonor() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>שם מלא *</Label>
-                <Input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
+                <Label>שם פרטי *</Label>
+                <Input value={form.first_name} onChange={(e) => set("first_name", e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>שם משפחה</Label>
+                <Input value={form.last_name} onChange={(e) => set("last_name", e.target.value)} />
               </div>
             </div>
 
