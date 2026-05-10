@@ -82,7 +82,8 @@ function parseFile(file: File): Promise<{ columns: string[]; rows: Record<string
 const ALL_DONOR_FIELDS = [
   { key: "id", label: "מזהה" },
   { key: "title", label: "תואר" },
-  { key: "full_name", label: "שם מלא" },
+  { key: "first_name", label: "שם פרטי" },
+  { key: "last_name", label: "שם משפחה" },
   { key: "father_name", label: "שם האב" },
   { key: "phone", label: "טלפון" },
   { key: "city", label: "עיר" },
@@ -96,7 +97,8 @@ const ALL_DONOR_FIELDS = [
 // All bachur fields - ONLY these fields
 const ALL_BACHUR_FIELDS = [
   { key: "id", label: "מזהה" },
-  { key: "full_name", label: "שם מלא" },
+  { key: "first_name", label: "שם פרטי" },
+  { key: "last_name", label: "שם משפחה" },
   { key: "father_name", label: "שם האב" },
   { key: "yeshiva", label: "ישיבה" },
   { key: "shiur", label: "שיעור" },
@@ -247,9 +249,9 @@ export default function DataSettings() {
   const handleImport = () => {
     if (fileData.length === 0) return;
     if (importTarget === "donors") {
-      const newDonors: Omit<Donor, "id" | "created_at" | "updated_at">[] = fileData.map((row) => {
-        const d: Omit<Donor, "id" | "created_at" | "updated_at"> = {
-          title: "", full_name: "", father_name: "", phone: "", city: "", address: "", house_number: "", floor: "", is_new: true, notes: "", donations: {}, donation_notes: {},
+      const newDonors: Omit<Donor, "id" | "created_at" | "updated_at" | "full_name">[] = fileData.map((row) => {
+        const d: Omit<Donor, "id" | "created_at" | "updated_at" | "full_name"> = {
+          title: "", first_name: "", last_name: "", father_name: "", phone: "", city: "", address: "", house_number: "", floor: "", is_new: true, notes: "", donations: {}, donation_notes: {},
         };
         Object.entries(mapping).forEach(([fileCol, fieldKey]) => {
           const val = row[fileCol] || "";
@@ -260,7 +262,7 @@ export default function DataSettings() {
             d.donation_notes[year] = val;
           } else if (fieldKey === "is_new") {
             d.is_new = val === "true" || val === "1" || val === "כן" || val.toLowerCase() === "yes" || val === "✓" || val === "✔";
-          } else if (fieldKey !== "id" && fieldKey in d) {
+          } else if (fieldKey !== "id" && fieldKey !== "full_name" && fieldKey in d) {
             (d as any)[fieldKey] = val;
           }
         });
@@ -271,15 +273,15 @@ export default function DataSettings() {
         onError: () => toast.error("שגיאה ביבוא הנתונים"),
       });
     } else {
-      const newBachurim: Omit<Bachur, "id" | "created_at" | "updated_at">[] = fileData.map((row) => {
-        const b: Omit<Bachur, "id" | "created_at" | "updated_at"> = {
-          title: "", full_name: "", father_name: "", phone: "", city: "", address: "", floor: "", is_new: true, notes: "", yeshiva: "", shiur: "",
+      const newBachurim: Omit<Bachur, "id" | "created_at" | "updated_at" | "full_name">[] = fileData.map((row) => {
+        const b: Omit<Bachur, "id" | "created_at" | "updated_at" | "full_name"> = {
+          title: "", first_name: "", last_name: "", father_name: "", phone: "", city: "", address: "", floor: "", is_new: true, notes: "", yeshiva: "", shiur: "",
         };
         Object.entries(mapping).forEach(([fileCol, fieldKey]) => {
           const val = row[fileCol] || "";
           if (fieldKey === "is_new") {
             b.is_new = val === "true" || val === "1" || val === "כן" || val.toLowerCase() === "yes" || val === "✓" || val === "✔";
-          } else if (fieldKey !== "id" && fieldKey in b) {
+          } else if (fieldKey !== "id" && fieldKey !== "full_name" && fieldKey in b) {
             (b as any)[fieldKey] = val;
           }
         });
