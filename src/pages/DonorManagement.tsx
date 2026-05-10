@@ -58,7 +58,8 @@ export default function DonorManagement() {
       {
         id: editDonor.id,
         updates: {
-          title: editDonor.title, full_name: editDonor.full_name, father_name: editDonor.father_name,
+          title: editDonor.title, first_name: editDonor.first_name, last_name: editDonor.last_name,
+          father_name: editDonor.father_name,
           phone: editDonor.phone, city: editDonor.city, address: editDonor.address,
           house_number: editDonor.house_number, floor: editDonor.floor, is_new: editDonor.is_new,
           notes: editDonor.notes, donations: editDonor.donations, donation_notes: editDonor.donation_notes,
@@ -68,9 +69,9 @@ export default function DonorManagement() {
     );
   };
 
-  const columnFields = ["title", "full_name", "father_name", "city", "address", "house_number", "floor"] as const;
+  const columnFields = ["title", "first_name", "last_name", "father_name", "city", "address", "house_number", "floor"] as const;
   const columnLabels: Record<string, string> = {
-    title: "תואר", full_name: "שם מלא", father_name: "שם האב",
+    title: "תואר", first_name: "שם פרטי", last_name: "שם משפחה", father_name: "שם האב",
     city: "עיר", address: "רחוב", house_number: "מס׳ בית", floor: "קומה", notes: "הערות",
   };
 
