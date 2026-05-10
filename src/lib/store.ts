@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 export interface Donor {
   id: number;
   title: string;
+  first_name: string;
+  last_name: string;
   full_name: string;
   father_name: string;
   phone: string;
@@ -22,6 +24,8 @@ export interface Donor {
 export interface Bachur {
   id: number;
   title: string;
+  first_name: string;
+  last_name: string;
   full_name: string;
   father_name: string;
   phone: string;
