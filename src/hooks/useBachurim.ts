@@ -11,7 +11,7 @@ export function useBachurim() {
 export function useAddBachur() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (b: Omit<Bachur, "id" | "created_at" | "updated_at">) => addBachur(b),
+    mutationFn: (b: Omit<Bachur, "id" | "created_at" | "updated_at" | "full_name">) => addBachur(b),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bachurim"] }),
   });
 }
@@ -19,7 +19,7 @@ export function useAddBachur() {
 export function useUpdateBachur() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, updates }: { id: number; updates: Partial<Omit<Bachur, "id">> }) =>
+    mutationFn: ({ id, updates }: { id: number; updates: Partial<Omit<Bachur, "id" | "full_name">> }) =>
       updateBachur(id, updates),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bachurim"] }),
   });
@@ -50,7 +50,7 @@ export function useResetBachurSequence() {
 export function useAddBachurimBatch() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (bachurim: Omit<Bachur, "id" | "created_at" | "updated_at">[]) => addBachurimBatch(bachurim),
+    mutationFn: (bachurim: Omit<Bachur, "id" | "created_at" | "updated_at" | "full_name">[]) => addBachurimBatch(bachurim),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bachurim"] }),
   });
 }

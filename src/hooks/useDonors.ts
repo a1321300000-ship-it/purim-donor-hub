@@ -11,7 +11,7 @@ export function useDonors() {
 export function useAddDonor() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (donor: Omit<Donor, "id" | "created_at" | "updated_at">) => addDonor(donor),
+    mutationFn: (donor: Omit<Donor, "id" | "created_at" | "updated_at" | "full_name">) => addDonor(donor),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["donors"] }),
   });
 }
@@ -19,7 +19,7 @@ export function useAddDonor() {
 export function useUpdateDonor() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, updates }: { id: number; updates: Partial<Omit<Donor, "id">> }) =>
+    mutationFn: ({ id, updates }: { id: number; updates: Partial<Omit<Donor, "id" | "full_name">> }) =>
       updateDonor(id, updates),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["donors"] }),
   });
@@ -50,7 +50,7 @@ export function useResetDonorSequence() {
 export function useAddDonorsBatch() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (donors: Omit<Donor, "id" | "created_at" | "updated_at">[]) => addDonorsBatch(donors),
+    mutationFn: (donors: Omit<Donor, "id" | "created_at" | "updated_at" | "full_name">[]) => addDonorsBatch(donors),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["donors"] }),
   });
 }
