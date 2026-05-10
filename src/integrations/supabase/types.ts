@@ -20,10 +20,12 @@ export type Database = {
           city: string
           created_at: string
           father_name: string
+          first_name: string
           floor: string
-          full_name: string
+          full_name: string | null
           id: number
           is_new: boolean
+          last_name: string
           notes: string
           phone: string
           shiur: string
@@ -36,10 +38,12 @@ export type Database = {
           city?: string
           created_at?: string
           father_name?: string
+          first_name?: string
           floor?: string
-          full_name?: string
+          full_name?: string | null
           id?: never
           is_new?: boolean
+          last_name?: string
           notes?: string
           phone?: string
           shiur?: string
@@ -52,10 +56,12 @@ export type Database = {
           city?: string
           created_at?: string
           father_name?: string
+          first_name?: string
           floor?: string
-          full_name?: string
+          full_name?: string | null
           id?: never
           is_new?: boolean
+          last_name?: string
           notes?: string
           phone?: string
           shiur?: string
@@ -101,11 +107,13 @@ export type Database = {
           donation_notes: Json
           donations: Json
           father_name: string
+          first_name: string
           floor: string
-          full_name: string
+          full_name: string | null
           house_number: string
           id: number
           is_new: boolean
+          last_name: string
           notes: string
           phone: string
           title: string
@@ -119,11 +127,13 @@ export type Database = {
           donation_notes?: Json
           donations?: Json
           father_name?: string
+          first_name?: string
           floor?: string
-          full_name?: string
+          full_name?: string | null
           house_number?: string
           id?: never
           is_new?: boolean
+          last_name?: string
           notes?: string
           phone?: string
           title?: string
@@ -137,11 +147,13 @@ export type Database = {
           donation_notes?: Json
           donations?: Json
           father_name?: string
+          first_name?: string
           floor?: string
-          full_name?: string
+          full_name?: string | null
           house_number?: string
           id?: never
           is_new?: boolean
+          last_name?: string
           notes?: string
           phone?: string
           title?: string

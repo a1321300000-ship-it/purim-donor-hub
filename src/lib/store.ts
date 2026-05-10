@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 export interface Donor {
   id: number;
   title: string;
+  first_name: string;
+  last_name: string;
   full_name: string;
   father_name: string;
   phone: string;
@@ -22,6 +24,8 @@ export interface Donor {
 export interface Bachur {
   id: number;
   title: string;
+  first_name: string;
+  last_name: string;
   full_name: string;
   father_name: string;
   phone: string;
@@ -138,6 +142,9 @@ export async function getDonors(): Promise<Donor[]> {
   return allData.map((d) => ({
     ...d,
     title: (d as any).title || "",
+    first_name: (d as any).first_name || "",
+    last_name: (d as any).last_name || "",
+    full_name: (d as any).full_name || "",
     father_name: (d as any).father_name || "",
     floor: (d as any).floor || "",
     house_number: (d as any).house_number || "",
@@ -147,12 +154,13 @@ export async function getDonors(): Promise<Donor[]> {
   }));
 }
 
-export async function addDonor(donor: Omit<Donor, "id" | "created_at" | "updated_at">): Promise<Donor> {
+export async function addDonor(donor: Omit<Donor, "id" | "created_at" | "updated_at" | "full_name"> & { full_name?: string }): Promise<Donor> {
   const { data, error } = await supabase
     .from("donors")
     .insert({
       title: donor.title,
-      full_name: donor.full_name,
+      first_name: donor.first_name,
+      last_name: donor.last_name,
       father_name: donor.father_name,
       phone: donor.phone,
       city: donor.city,
@@ -163,7 +171,7 @@ export async function addDonor(donor: Omit<Donor, "id" | "created_at" | "updated
       notes: donor.notes,
       donations: donor.donations as any,
       donation_notes: donor.donation_notes as any,
-    })
+    } as any)
     .select()
     .single();
 
@@ -175,8 +183,8 @@ export async function addDonor(donor: Omit<Donor, "id" | "created_at" | "updated
   } as Donor;
 }
 
-export async function updateDonor(id: number, updates: Partial<Omit<Donor, "id">>): Promise<void> {
-  const fields = ["title", "full_name", "father_name", "phone", "city", "address", "house_number", "floor", "is_new", "notes", "donations", "donation_notes", "archived_at"] as const;
+export async function updateDonor(id: number, updates: Partial<Omit<Donor, "id" | "full_name">>): Promise<void> {
+  const fields = ["title", "first_name", "last_name", "father_name", "phone", "city", "address", "house_number", "floor", "is_new", "notes", "donations", "donation_notes", "archived_at"] as const;
   const payload: any = {};
   fields.forEach((f) => {
     if ((updates as any)[f] !== undefined) payload[f] = (updates as any)[f];
@@ -201,11 +209,12 @@ export async function resetDonorSequence(): Promise<void> {
   if (error) throw error;
 }
 
-export async function addDonorsBatch(donors: Omit<Donor, "id" | "created_at" | "updated_at">[]): Promise<void> {
+export async function addDonorsBatch(donors: Omit<Donor, "id" | "created_at" | "updated_at" | "full_name">[]): Promise<void> {
   const { error } = await supabase.from("donors").insert(
     donors.map((d) => ({
       title: d.title || "",
-      full_name: d.full_name,
+      first_name: d.first_name || "",
+      last_name: d.last_name || "",
       father_name: d.father_name || "",
       phone: d.phone,
       city: d.city,
@@ -216,7 +225,7 @@ export async function addDonorsBatch(donors: Omit<Donor, "id" | "created_at" | "
       notes: d.notes,
       donations: d.donations as any,
       donation_notes: (d.donation_notes || {}) as any,
-    }))
+    } as any))
   );
   if (error) throw error;
 }
@@ -241,17 +250,21 @@ export async function getBachurim(): Promise<Bachur[]> {
   }
   return allData.map((d) => ({
     ...d,
+    first_name: (d as any).first_name || "",
+    last_name: (d as any).last_name || "",
+    full_name: (d as any).full_name || "",
     yeshiva: (d as any).yeshiva || "",
     shiur: (d as any).shiur || "",
   })) as Bachur[];
 }
 
-export async function addBachur(bachur: Omit<Bachur, "id" | "created_at" | "updated_at">): Promise<Bachur> {
+export async function addBachur(bachur: Omit<Bachur, "id" | "created_at" | "updated_at" | "full_name">): Promise<Bachur> {
   const { data, error } = await supabase
     .from("bachurim")
     .insert({
       title: bachur.title,
-      full_name: bachur.full_name,
+      first_name: bachur.first_name,
+      last_name: bachur.last_name,
       father_name: bachur.father_name,
       phone: bachur.phone,
       city: bachur.city,
@@ -268,8 +281,8 @@ export async function addBachur(bachur: Omit<Bachur, "id" | "created_at" | "upda
   return data as unknown as Bachur;
 }
 
-export async function updateBachur(id: number, updates: Partial<Omit<Bachur, "id">>): Promise<void> {
-  const fields = ["full_name", "father_name", "notes", "yeshiva", "shiur"] as const;
+export async function updateBachur(id: number, updates: Partial<Omit<Bachur, "id" | "full_name">>): Promise<void> {
+  const fields = ["first_name", "last_name", "father_name", "notes", "yeshiva", "shiur"] as const;
   const payload: any = {};
   fields.forEach((f) => {
     if ((updates as any)[f] !== undefined) payload[f] = (updates as any)[f];
@@ -293,11 +306,12 @@ export async function resetBachurSequence(): Promise<void> {
   if (error) throw error;
 }
 
-export async function addBachurimBatch(bachurim: Omit<Bachur, "id" | "created_at" | "updated_at">[]): Promise<void> {
+export async function addBachurimBatch(bachurim: Omit<Bachur, "id" | "created_at" | "updated_at" | "full_name">[]): Promise<void> {
   const { error } = await supabase.from("bachurim").insert(
     bachurim.map((b) => ({
       title: b.title || "",
-      full_name: b.full_name,
+      first_name: b.first_name || "",
+      last_name: b.last_name || "",
       father_name: b.father_name || "",
       phone: b.phone || "",
       city: b.city || "",
@@ -317,7 +331,8 @@ export function getDonorFields(yearsList: string[]) {
   return [
     { key: "id", label: "מזהה" },
     { key: "title", label: "תואר" },
-    { key: "full_name", label: "שם מלא" },
+    { key: "first_name", label: "שם פרטי" },
+    { key: "last_name", label: "שם משפחה" },
     { key: "father_name", label: "שם האב" },
     { key: "phone", label: "טלפון" },
     { key: "city", label: "עיר" },
@@ -334,7 +349,8 @@ export function getBachurFields() {
   return [
     { key: "id", label: "מזהה" },
     { key: "title", label: "תואר" },
-    { key: "full_name", label: "שם מלא" },
+    { key: "first_name", label: "שם פרטי" },
+    { key: "last_name", label: "שם משפחה" },
     { key: "father_name", label: "שם האב" },
     { key: "phone", label: "טלפון" },
     { key: "city", label: "עיר" },

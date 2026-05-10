@@ -17,7 +17,7 @@ export default function AddBachur() {
   const { data: shiurim = [] } = useSelectOptions("shiur");
 
   const [form, setForm] = useState({
-    title: "", full_name: "", father_name: "", phone: "",
+    title: "", first_name: "", last_name: "", full_name: "", father_name: "", phone: "",
     city: "", address: "", floor: "", is_new: true, notes: "",
     yeshiva: "", shiur: "",
   });
@@ -27,8 +27,8 @@ export default function AddBachur() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.full_name.trim()) {
-      toast.error("יש להזין שם מלא");
+    if (!form.first_name.trim() && !form.last_name.trim()) {
+      toast.error("יש להזין שם פרטי או שם משפחה");
       return;
     }
     addBachur.mutate(form, {
@@ -50,12 +50,22 @@ export default function AddBachur() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>שם מלא *</Label>
-                <Input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
+                <Label>שם פרטי *</Label>
+                <Input value={form.first_name} onChange={(e) => set("first_name", e.target.value)} />
               </div>
+              <div className="space-y-2">
+                <Label>שם משפחה</Label>
+                <Input value={form.last_name} onChange={(e) => set("last_name", e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>שם האב</Label>
                 <Input value={form.father_name} onChange={(e) => set("father_name", e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>טלפון</Label>
+                <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

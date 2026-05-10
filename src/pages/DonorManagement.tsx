@@ -58,7 +58,8 @@ export default function DonorManagement() {
       {
         id: editDonor.id,
         updates: {
-          title: editDonor.title, full_name: editDonor.full_name, father_name: editDonor.father_name,
+          title: editDonor.title, first_name: editDonor.first_name, last_name: editDonor.last_name,
+          father_name: editDonor.father_name,
           phone: editDonor.phone, city: editDonor.city, address: editDonor.address,
           house_number: editDonor.house_number, floor: editDonor.floor, is_new: editDonor.is_new,
           notes: editDonor.notes, donations: editDonor.donations, donation_notes: editDonor.donation_notes,
@@ -68,9 +69,9 @@ export default function DonorManagement() {
     );
   };
 
-  const columnFields = ["title", "full_name", "father_name", "city", "address", "house_number", "floor"] as const;
+  const columnFields = ["title", "first_name", "last_name", "father_name", "city", "address", "house_number", "floor"] as const;
   const columnLabels: Record<string, string> = {
-    title: "תואר", full_name: "שם מלא", father_name: "שם האב",
+    title: "תואר", first_name: "שם פרטי", last_name: "שם משפחה", father_name: "שם האב",
     city: "עיר", address: "רחוב", house_number: "מס׳ בית", floor: "קומה", notes: "הערות",
   };
 
@@ -149,9 +150,10 @@ export default function DonorManagement() {
                 <TableCell className="px-2 font-medium whitespace-nowrap">
                   <span className="flex items-center gap-1">
                     {donor.is_new && <Sparkles className="h-3.5 w-3.5 text-gold shrink-0" />}
-                    {donor.full_name}
+                    {donor.first_name}
                   </span>
                 </TableCell>
+                <TableCell className="px-2">{donor.last_name}</TableCell>
                 <TableCell className="px-2">{donor.father_name}</TableCell>
                 <TableCell className="px-2">{donor.city}</TableCell>
                 <TableCell className="px-2">{donor.address}</TableCell>
@@ -263,11 +265,15 @@ export default function DonorManagement() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>שם מלא</Label>
-                  <Input value={editDonor.full_name} onChange={(e) => setEditDonor({ ...editDonor, full_name: e.target.value })} />
+                  <Label>שם פרטי</Label>
+                  <Input value={editDonor.first_name} onChange={(e) => setEditDonor({ ...editDonor, first_name: e.target.value })} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label>שם משפחה</Label>
+                  <Input value={editDonor.last_name} onChange={(e) => setEditDonor({ ...editDonor, last_name: e.target.value })} />
+                </div>
                 <div className="space-y-2">
                   <Label>שם האב</Label>
                   <Input value={editDonor.father_name} onChange={(e) => setEditDonor({ ...editDonor, father_name: e.target.value })} />

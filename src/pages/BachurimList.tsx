@@ -47,14 +47,14 @@ export default function BachurimList() {
   const saveEdit = () => {
     if (!editBachur) return;
     updateBachur.mutate(
-      { id: editBachur.id, updates: { full_name: editBachur.full_name, father_name: editBachur.father_name, yeshiva: editBachur.yeshiva, shiur: editBachur.shiur, notes: editBachur.notes } },
+      { id: editBachur.id, updates: { first_name: editBachur.first_name, last_name: editBachur.last_name, father_name: editBachur.father_name, yeshiva: editBachur.yeshiva, shiur: editBachur.shiur, notes: editBachur.notes } },
       { onSuccess: () => { setEditBachur(null); toast.success("הבחור עודכן"); } }
     );
   };
 
-  const columnFields = ["full_name", "father_name", "yeshiva", "shiur", "notes"] as const;
+  const columnFields = ["first_name", "last_name", "father_name", "yeshiva", "shiur", "notes"] as const;
   const columnLabels: Record<string, string> = {
-    full_name: "שם מלא", father_name: "שם האב", yeshiva: "ישיבה", shiur: "שיעור", notes: "הערות",
+    first_name: "שם פרטי", last_name: "שם משפחה", father_name: "שם האב", yeshiva: "ישיבה", shiur: "שיעור", notes: "הערות",
   };
 
   const filtered = useMemo(() => {
@@ -97,7 +97,8 @@ export default function BachurimList() {
             {filtered.map((b, idx) => (
               <TableRow key={b.id} className={idx % 2 === 0 ? "bg-card" : "bg-muted/20"}>
                 <TableCell className="font-mono text-muted-foreground px-2 text-xs">{b.id}</TableCell>
-                <TableCell className="px-2 font-medium">{b.full_name}</TableCell>
+                <TableCell className="px-2 font-medium">{b.first_name}</TableCell>
+                <TableCell className="px-2">{b.last_name}</TableCell>
                 <TableCell className="px-2">{b.father_name}</TableCell>
                 <TableCell className="px-2">{b.yeshiva}</TableCell>
                 <TableCell className="px-2">{b.shiur}</TableCell>
@@ -150,8 +151,12 @@ export default function BachurimList() {
           {editBachur && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2"><Label>שם מלא</Label><Input value={editBachur.full_name} onChange={(e) => setEditBachur({ ...editBachur, full_name: e.target.value })} /></div>
+                <div className="space-y-2"><Label>שם פרטי</Label><Input value={editBachur.first_name} onChange={(e) => setEditBachur({ ...editBachur, first_name: e.target.value })} /></div>
+                <div className="space-y-2"><Label>שם משפחה</Label><Input value={editBachur.last_name} onChange={(e) => setEditBachur({ ...editBachur, last_name: e.target.value })} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2"><Label>שם האב</Label><Input value={editBachur.father_name} onChange={(e) => setEditBachur({ ...editBachur, father_name: e.target.value })} /></div>
+                <div className="space-y-2"><Label>טלפון</Label><Input value={editBachur.phone || ""} onChange={(e) => setEditBachur({ ...editBachur, phone: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
