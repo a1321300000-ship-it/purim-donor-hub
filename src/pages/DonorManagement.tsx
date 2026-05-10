@@ -269,12 +269,11 @@ export default function DonorManagement() {
                   <Input value={editDonor.first_name} onChange={(e) => setEditDonor({ ...editDonor, first_name: e.target.value })} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-2">
                   <Label>שם משפחה</Label>
                   <Input value={editDonor.last_name} onChange={(e) => setEditDonor({ ...editDonor, last_name: e.target.value })} />
                 </div>
-              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>שם האב</Label>
                   <Input value={editDonor.father_name} onChange={(e) => setEditDonor({ ...editDonor, father_name: e.target.value })} />
