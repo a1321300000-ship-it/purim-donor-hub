@@ -713,3 +713,50 @@ export default function DataSettings() {
     </div>
   );
 }
+
+function MissionCitiesCard() {
+  const { data: settings } = useSettings();
+  const saveSetting = useSaveSetting();
+  const [mta, setMta] = useState("");
+  const [yad, setYad] = useState("");
+
+  useEffect(() => {
+    setMta((settings?.mta_cities || []).join("\n"));
+    setYad((settings?.yad_cities || []).join("\n"));
+  }, [settings?.mta_cities, settings?.yad_cities]);
+
+  const parse = (txt: string) =>
+    txt.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+
+  const handleSave = async () => {
+    await saveSetting.mutateAsync({ key: "mta_cities", value: parse(mta) });
+    await saveSetting.mutateAsync({ key: "yad_cities", value: parse(yad) });
+    toast.success("ערי המשימות נשמרו");
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" />ערי המשימות</CardTitle>
+        <CardDescription>
+          הגדר אילו ערים שייכות למשימת מת"א ואילו לי"ד. הזן עיר אחת בכל שורה (או מופרדות בפסיק).
+          ירושלים משויכת אוטומטית למשימת ט"ו בלבד.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label>ערי מת"א</Label>
+            <Textarea rows={6} value={mta} onChange={(e) => setMta(e.target.value)} placeholder="עיר בכל שורה" dir="rtl" />
+          </div>
+          <div className="space-y-1">
+            <Label>ערי י"ד</Label>
+            <Textarea rows={6} value={yad} onChange={(e) => setYad(e.target.value)} placeholder="עיר בכל שורה" dir="rtl" />
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={saveSetting.isPending}>שמור ערים</Button>
+        <p className="text-xs text-muted-foreground">אם רשימה ריקה — כל הערים (מלבד ירושלים) זמינות למשימה זו.</p>
+      </CardContent>
+    </Card>
+  );
+}
