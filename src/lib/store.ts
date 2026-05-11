@@ -311,7 +311,6 @@ export async function addBachurimBatch(bachurim: Omit<Bachur, "id" | "created_at
       first_name: b.first_name || "",
       last_name: b.last_name || "",
       father_name: b.father_name || "",
-      phone: b.phone || "",
       city: b.city || "",
       address: b.address || "",
       floor: b.floor || "",
