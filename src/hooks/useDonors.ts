@@ -42,6 +42,23 @@ export function useDeleteDonorsBatch() {
   });
 }
 
+export function useDeleteAllDonors() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error: me } = await supabase.from("group_members").delete().neq("id", 0);
+      if (me) throw me;
+      const { error } = await supabase.from("donors").delete().neq("id", 0);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["donors"] });
+      qc.invalidateQueries({ queryKey: ["group_members"] });
+      qc.invalidateQueries({ queryKey: ["group_members_all"] });
+    },
+  });
+}
+
 export function useResetDonorSequence() {
   return useMutation({
     mutationFn: () => resetDonorSequence(),
