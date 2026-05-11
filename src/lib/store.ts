@@ -349,7 +349,6 @@ export function getBachurFields() {
     { key: "first_name", label: "שם פרטי" },
     { key: "last_name", label: "שם משפחה" },
     { key: "father_name", label: "שם האב" },
-    { key: "phone", label: "טלפון" },
     { key: "city", label: "עיר" },
     { key: "address", label: "כתובת" },
     { key: "floor", label: "קומה" },
