@@ -70,6 +70,8 @@ export async function getSettings(): Promise<AppSettings> {
       year_count: 3,
       years_list: ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'],
       access_pin: "9999",
+      mta_cities: [],
+      yad_cities: [],
     };
   }
 
@@ -81,6 +83,8 @@ export async function getSettings(): Promise<AppSettings> {
     year_count: (map.year_count as number) || 3,
     years_list: (map.years_list as string[]) || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'],
     access_pin: (typeof map.access_pin === "string" ? map.access_pin : "9999"),
+    mta_cities: Array.isArray(map.mta_cities) ? map.mta_cities : [],
+    yad_cities: Array.isArray(map.yad_cities) ? map.yad_cities : [],
   };
 }
 
