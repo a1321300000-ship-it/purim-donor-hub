@@ -28,7 +28,6 @@ export interface Bachur {
   last_name: string;
   full_name: string;
   father_name: string;
-  phone: string;
   city: string;
   address: string;
   floor: string;
