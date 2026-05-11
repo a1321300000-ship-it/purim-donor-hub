@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useSettings, useSaveSetting } from "@/hooks/useSettings";
-import { useDonors, useAddDonorsBatch, useDeleteDonorsBatch, useResetDonorSequence } from "@/hooks/useDonors";
+import { useDonors, useAddDonorsBatch, useDeleteDonorsBatch, useDeleteAllDonors, useResetDonorSequence } from "@/hooks/useDonors";
 import { useBachurim, useAddBachurimBatch, useDeleteBachurimBatch, useResetBachurSequence } from "@/hooks/useBachurim";
 import { useSelectOptions } from "@/hooks/useSelectOptions";
 import { useGroups, useDeleteAllGroups, useResetGroupSequence } from "@/hooks/useGroups";
@@ -115,6 +115,7 @@ export default function DataSettings() {
   const addDonorsBatch = useAddDonorsBatch();
   const addBachurimBatch = useAddBachurimBatch();
   const deleteDonorsBatch = useDeleteDonorsBatch();
+  const deleteAllDonorsMut = useDeleteAllDonors();
   const deleteBachurimBatch = useDeleteBachurimBatch();
   const resetDonorSeq = useResetDonorSequence();
   const resetBachurSeq = useResetBachurSequence();
@@ -196,10 +197,8 @@ export default function DataSettings() {
 
   // Delete all donors
   const handleDeleteAllDonors = () => {
-    const ids = donors.map((d) => d.id);
-    if (ids.length === 0) { toast.info("אין תורמים למחיקה"); setDeleteAllDonorsOpen(false); return; }
-    deleteDonorsBatch.mutate(ids, {
-      onSuccess: () => { toast.success(`${ids.length} תורמים נמחקו`); setDeleteAllDonorsOpen(false); },
+    deleteAllDonorsMut.mutate(undefined, {
+      onSuccess: () => { toast.success("כל התורמים נמחקו"); setDeleteAllDonorsOpen(false); },
       onError: () => toast.error("שגיאה במחיקת התורמים"),
     });
   };
