@@ -51,6 +51,8 @@ export interface AppSettings {
   year_count: number;
   years_list: string[];
   access_pin: string;
+  mta_cities: string[];
+  yad_cities: string[];
 }
 
 export const TITLE_OPTIONS = ["הרב", "הרה\"ג", "מר", "גב'", "ד\"ר", "פרופ'"];
