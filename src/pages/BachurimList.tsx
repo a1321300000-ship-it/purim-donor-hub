@@ -156,7 +156,7 @@ export default function BachurimList() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2"><Label>שם האב</Label><Input value={editBachur.father_name} onChange={(e) => setEditBachur({ ...editBachur, father_name: e.target.value })} /></div>
-                <div className="space-y-2"><Label>טלפון</Label><Input value={editBachur.phone || ""} onChange={(e) => setEditBachur({ ...editBachur, phone: e.target.value })} /></div>
+                <div className="space-y-2"><Label>עיר</Label><Input value={editBachur.city || ""} onChange={(e) => setEditBachur({ ...editBachur, city: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
