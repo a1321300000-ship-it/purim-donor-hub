@@ -265,7 +265,6 @@ export async function addBachur(bachur: Omit<Bachur, "id" | "created_at" | "upda
       first_name: bachur.first_name,
       last_name: bachur.last_name,
       father_name: bachur.father_name,
-      phone: bachur.phone,
       city: bachur.city,
       address: bachur.address,
       floor: bachur.floor,
