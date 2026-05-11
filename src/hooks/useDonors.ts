@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { getDonors, addDonor, updateDonor, deleteDonor, deleteDonorsBatch, resetDonorSequence, addDonorsBatch, Donor } from "@/lib/store";
 
 export function useDonors() {
