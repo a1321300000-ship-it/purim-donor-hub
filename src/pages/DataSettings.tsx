@@ -428,6 +428,8 @@ export default function DataSettings() {
         </CardContent>
       </Card>
 
+      <MissionCitiesCard />
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Trash2 className="h-5 w-5" />ניהול תורמים</CardTitle>
