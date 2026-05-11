@@ -275,7 +275,7 @@ export default function DataSettings() {
     } else {
       const newBachurim: Omit<Bachur, "id" | "created_at" | "updated_at" | "full_name">[] = fileData.map((row) => {
         const b: Omit<Bachur, "id" | "created_at" | "updated_at" | "full_name"> = {
-          title: "", first_name: "", last_name: "", father_name: "", phone: "", city: "", address: "", floor: "", is_new: true, notes: "", yeshiva: "", shiur: "",
+          title: "", first_name: "", last_name: "", father_name: "", city: "", address: "", floor: "", is_new: true, notes: "", yeshiva: "", shiur: "",
         };
         Object.entries(mapping).forEach(([fileCol, fieldKey]) => {
           const val = row[fileCol] || "";
