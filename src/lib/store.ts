@@ -28,7 +28,6 @@ export interface Bachur {
   last_name: string;
   full_name: string;
   father_name: string;
-  phone: string;
   city: string;
   address: string;
   floor: string;
@@ -52,6 +51,8 @@ export interface AppSettings {
   year_count: number;
   years_list: string[];
   access_pin: string;
+  mta_cities: string[];
+  yad_cities: string[];
 }
 
 export const TITLE_OPTIONS = ["הרב", "הרה\"ג", "מר", "גב'", "ד\"ר", "פרופ'"];
@@ -69,6 +70,8 @@ export async function getSettings(): Promise<AppSettings> {
       year_count: 3,
       years_list: ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'],
       access_pin: "9999",
+      mta_cities: [],
+      yad_cities: [],
     };
   }
 
@@ -80,6 +83,8 @@ export async function getSettings(): Promise<AppSettings> {
     year_count: (map.year_count as number) || 3,
     years_list: (map.years_list as string[]) || ['תשפ"ג', 'תשפ"ד', 'תשפ"ה'],
     access_pin: (typeof map.access_pin === "string" ? map.access_pin : "9999"),
+    mta_cities: Array.isArray(map.mta_cities) ? map.mta_cities : [],
+    yad_cities: Array.isArray(map.yad_cities) ? map.yad_cities : [],
   };
 }
 
@@ -266,7 +271,6 @@ export async function addBachur(bachur: Omit<Bachur, "id" | "created_at" | "upda
       first_name: bachur.first_name,
       last_name: bachur.last_name,
       father_name: bachur.father_name,
-      phone: bachur.phone,
       city: bachur.city,
       address: bachur.address,
       floor: bachur.floor,
@@ -313,7 +317,6 @@ export async function addBachurimBatch(bachurim: Omit<Bachur, "id" | "created_at
       first_name: b.first_name || "",
       last_name: b.last_name || "",
       father_name: b.father_name || "",
-      phone: b.phone || "",
       city: b.city || "",
       address: b.address || "",
       floor: b.floor || "",
@@ -352,7 +355,6 @@ export function getBachurFields() {
     { key: "first_name", label: "שם פרטי" },
     { key: "last_name", label: "שם משפחה" },
     { key: "father_name", label: "שם האב" },
-    { key: "phone", label: "טלפון" },
     { key: "city", label: "עיר" },
     { key: "address", label: "כתובת" },
     { key: "floor", label: "קומה" },

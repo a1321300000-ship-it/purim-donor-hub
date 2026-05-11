@@ -28,7 +28,7 @@ const geoCache: Record<string, [number, number] | null> = {};
 async function geocodeAddress(city: string, address: string, houseNumber: string): Promise<[number, number] | null> {
   const key = `${city} ${address} ${houseNumber}`.trim();
   if (key in geoCache) return geoCache[key];
-  
+
   try {
     const q = encodeURIComponent(`${address} ${houseNumber}, ${city}, ישראל`);
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}&limit=1&countrycodes=il`);
@@ -53,14 +53,15 @@ async function geocodeAddress(city: string, address: string, houseNumber: string
   return null;
 }
 
-const TASK_TYPES = ['מת"א', 'י"ד', 'ט"ו'];
+const TASK_TYPES = ['מת"א', 'י"ד', 'ט"ו', 'ליל ט"ו'];
 const TRANSPORT_TYPES = [
   { value: "רגלי", label: "רגלי" },
   { value: "נסיעה/טנדר", label: "נסיעה/טנדר" },
 ];
+const JERUSALEM = "ירושלים";
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000; // meters
+  const R = 6371000;
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
@@ -85,18 +86,32 @@ export default function DonorMapping() {
   const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
 
   const assignedDonorIds = useMemo(() => new Set(allMembers.map((m) => m.donor_id)), [allMembers]);
-  
-  const activeDonors = useMemo(
-    () => donors.filter((d) => !d.archived_at && !assignedDonorIds.has(d.id)),
-    [donors, assignedDonorIds]
-  );
+
+  const mtaCities = settings?.mta_cities || [];
+  const yadCities = settings?.yad_cities || [];
+
+  // Filter donors by mission city rules
+  const activeDonors = useMemo(() => {
+    return donors.filter((d) => {
+      if (d.archived_at) return false;
+      if (assignedDonorIds.has(d.id)) return false;
+      const city = (d.city || "").trim();
+      if (taskType === 'ט"ו') return city === JERUSALEM;
+      // All non-Jerusalem missions exclude Jerusalem donors
+      if (city === JERUSALEM) return false;
+      if (taskType === 'מת"א') return mtaCities.length === 0 ? true : mtaCities.includes(city);
+      if (taskType === 'י"ד') return yadCities.length === 0 ? true : yadCities.includes(city);
+      // ליל ט"ו: all non-Jerusalem unassigned donors
+      return true;
+    });
+  }, [donors, assignedDonorIds, taskType, mtaCities, yadCities]);
 
   // Geocode donors
   useEffect(() => {
-    if (activeDonors.length === 0) return;
+    if (activeDonors.length === 0) { setGeocodedDonors(new Map()); return; }
     let cancelled = false;
     setIsGeocoding(true);
-    
+
     const geocodeAll = async () => {
       const newMap = new Map<number, [number, number]>();
       for (const donor of activeDonors) {
@@ -113,19 +128,19 @@ export default function DonorMapping() {
     };
     geocodeAll();
     return () => { cancelled = true; };
-  }, [activeDonors.length]);
+  }, [activeDonors.length, taskType]);
 
   // Initialize map
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
-    
+
     const map = L.map(mapRef.current).setView([31.7683, 35.2137], 8);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '© OpenStreetMap',
     }).addTo(map);
-    
+
     mapInstanceRef.current = map;
-    
+
     return () => {
       map.remove();
       mapInstanceRef.current = null;
@@ -176,7 +191,7 @@ export default function DonorMapping() {
       return;
     }
 
-    const maxRadius = transportType === "רגלי" ? 800 : 10000; // 800m walking, 10km driving
+    const maxRadius = transportType === "רגלי" ? 800 : 10000;
     const remaining = [...donorsWithCoords];
     const groups: { name: string; task_type: string; transport_type: string; members: { donor_id: number; sort_order: number }[] }[] = [];
     const remoteDonors: Donor[] = [];
@@ -192,15 +207,11 @@ export default function DonorMapping() {
       for (let i = 0; i < remaining.length; i++) {
         const c = geocodedDonors.get(remaining[i].id);
         if (!c) continue;
-        // City blocking: never mix cities
         if (remaining[i].city !== seedCity) continue;
         const dist = haversineDistance(seedCoords[0], seedCoords[1], c[0], c[1]);
-        if (dist <= maxRadius) {
-          candidates.push(i);
-        }
+        if (dist <= maxRadius) candidates.push(i);
       }
 
-      // Sort candidates by distance to seed
       candidates.sort((a, b) => {
         const ca = geocodedDonors.get(remaining[a].id)!;
         const cb = geocodedDonors.get(remaining[b].id)!;
@@ -209,20 +220,16 @@ export default function DonorMapping() {
         return da - db;
       });
 
-      // Take up to groupSize - 1 nearest candidates
       const taken = new Set<number>();
       for (const idx of candidates) {
         if (group.length >= groupSize) break;
         group.push(remaining[idx]);
         taken.add(idx);
       }
-      // Remove taken from remaining (reverse order to maintain indices)
       const sortedTaken = [...taken].sort((a, b) => b - a);
       for (const idx of sortedTaken) remaining.splice(idx, 1);
 
-      // If seed has no nearby neighbors, it's a remote donor
       if (group.length === 1 && remaining.length > 0) {
-        // Check if there are other donors in the same city still remaining
         const sameCityIdx = remaining.findIndex((d) => d.city === seedCity);
         if (sameCityIdx === -1) {
           remoteDonors.push(seed);
@@ -240,7 +247,6 @@ export default function DonorMapping() {
       groupIdx++;
     }
 
-    // Donors without coords → "תקלת שיבוץ"
     if (donorsWithoutCoords.length > 0) {
       for (let i = 0; i < donorsWithoutCoords.length; i += groupSize) {
         const chunk = donorsWithoutCoords.slice(i, i + groupSize);
@@ -254,7 +260,6 @@ export default function DonorMapping() {
       }
     }
 
-    // Remote donors → "ערים מרוחקות / לטיפול ידני"
     if (remoteDonors.length > 0) {
       for (let i = 0; i < remoteDonors.length; i += groupSize) {
         const chunk = remoteDonors.slice(i, i + groupSize);
@@ -286,7 +291,7 @@ export default function DonorMapping() {
               <Label>סוג משימה</Label>
               <Select value={taskType} onValueChange={setTaskType}>
                 <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[1000]">
                   {TASK_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -295,7 +300,7 @@ export default function DonorMapping() {
               <Label>סוג שינוע</Label>
               <Select value={transportType} onValueChange={setTransportType}>
                 <SelectTrigger className="w-36"><SelectValue placeholder="בחר סוג שינוע" /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[1000]">
                   {TRANSPORT_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -313,7 +318,7 @@ export default function DonorMapping() {
           </div>
         </CardContent>
       </Card>
-      <div ref={mapRef} className="border rounded-lg" style={{ height: "60vh" }} />
+      <div ref={mapRef} className="border rounded-lg relative z-0" style={{ height: "60vh" }} />
     </div>
   );
 }

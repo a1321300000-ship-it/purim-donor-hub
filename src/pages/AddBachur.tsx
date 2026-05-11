@@ -17,7 +17,7 @@ export default function AddBachur() {
   const { data: shiurim = [] } = useSelectOptions("shiur");
 
   const [form, setForm] = useState({
-    title: "", first_name: "", last_name: "", full_name: "", father_name: "", phone: "",
+    title: "", first_name: "", last_name: "", full_name: "", father_name: "",
     city: "", address: "", floor: "", is_new: true, notes: "",
     yeshiva: "", shiur: "",
   });
@@ -58,15 +58,9 @@ export default function AddBachur() {
                 <Input value={form.last_name} onChange={(e) => set("last_name", e.target.value)} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>שם האב</Label>
-                <Input value={form.father_name} onChange={(e) => set("father_name", e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>טלפון</Label>
-                <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
-              </div>
+            <div className="space-y-2">
+              <Label>שם האב</Label>
+              <Input value={form.father_name} onChange={(e) => set("father_name", e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">

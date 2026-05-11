@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useSettings, useSaveSetting } from "@/hooks/useSettings";
-import { useDonors, useAddDonorsBatch, useDeleteDonorsBatch, useResetDonorSequence } from "@/hooks/useDonors";
+import { useDonors, useAddDonorsBatch, useDeleteDonorsBatch, useDeleteAllDonors, useResetDonorSequence } from "@/hooks/useDonors";
 import { useBachurim, useAddBachurimBatch, useDeleteBachurimBatch, useResetBachurSequence } from "@/hooks/useBachurim";
 import { useSelectOptions } from "@/hooks/useSelectOptions";
 import { useGroups, useDeleteAllGroups, useResetGroupSequence } from "@/hooks/useGroups";
@@ -16,7 +16,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Upload, Download, Settings, Trash2, RotateCcw, Shield, Eye, EyeOff } from "lucide-react";
+import { Upload, Download, Settings, Trash2, RotateCcw, Shield, Eye, EyeOff, MapPin } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
@@ -115,6 +116,7 @@ export default function DataSettings() {
   const addDonorsBatch = useAddDonorsBatch();
   const addBachurimBatch = useAddBachurimBatch();
   const deleteDonorsBatch = useDeleteDonorsBatch();
+  const deleteAllDonorsMut = useDeleteAllDonors();
   const deleteBachurimBatch = useDeleteBachurimBatch();
   const resetDonorSeq = useResetDonorSequence();
   const resetBachurSeq = useResetBachurSequence();
@@ -196,10 +198,8 @@ export default function DataSettings() {
 
   // Delete all donors
   const handleDeleteAllDonors = () => {
-    const ids = donors.map((d) => d.id);
-    if (ids.length === 0) { toast.info("אין תורמים למחיקה"); setDeleteAllDonorsOpen(false); return; }
-    deleteDonorsBatch.mutate(ids, {
-      onSuccess: () => { toast.success(`${ids.length} תורמים נמחקו`); setDeleteAllDonorsOpen(false); },
+    deleteAllDonorsMut.mutate(undefined, {
+      onSuccess: () => { toast.success("כל התורמים נמחקו"); setDeleteAllDonorsOpen(false); },
       onError: () => toast.error("שגיאה במחיקת התורמים"),
     });
   };
@@ -275,7 +275,7 @@ export default function DataSettings() {
     } else {
       const newBachurim: Omit<Bachur, "id" | "created_at" | "updated_at" | "full_name">[] = fileData.map((row) => {
         const b: Omit<Bachur, "id" | "created_at" | "updated_at" | "full_name"> = {
-          title: "", first_name: "", last_name: "", father_name: "", phone: "", city: "", address: "", floor: "", is_new: true, notes: "", yeshiva: "", shiur: "",
+          title: "", first_name: "", last_name: "", father_name: "", city: "", address: "", floor: "", is_new: true, notes: "", yeshiva: "", shiur: "",
         };
         Object.entries(mapping).forEach(([fileCol, fieldKey]) => {
           const val = row[fileCol] || "";
@@ -428,6 +428,8 @@ export default function DataSettings() {
           <p className="text-xs text-muted-foreground">לפחות 4 ספרות. הקוד יישאר קבוע עד לשינוי ידני.</p>
         </CardContent>
       </Card>
+
+      <MissionCitiesCard />
 
       <Card>
         <CardHeader>
@@ -709,5 +711,52 @@ export default function DataSettings() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function MissionCitiesCard() {
+  const { data: settings } = useSettings();
+  const saveSetting = useSaveSetting();
+  const [mta, setMta] = useState("");
+  const [yad, setYad] = useState("");
+
+  useEffect(() => {
+    setMta((settings?.mta_cities || []).join("\n"));
+    setYad((settings?.yad_cities || []).join("\n"));
+  }, [settings?.mta_cities, settings?.yad_cities]);
+
+  const parse = (txt: string) =>
+    txt.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+
+  const handleSave = async () => {
+    await saveSetting.mutateAsync({ key: "mta_cities", value: parse(mta) });
+    await saveSetting.mutateAsync({ key: "yad_cities", value: parse(yad) });
+    toast.success("ערי המשימות נשמרו");
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" />ערי המשימות</CardTitle>
+        <CardDescription>
+          הגדר אילו ערים שייכות למשימת מת"א ואילו לי"ד. הזן עיר אחת בכל שורה (או מופרדות בפסיק).
+          ירושלים משויכת אוטומטית למשימת ט"ו בלבד.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label>ערי מת"א</Label>
+            <Textarea rows={6} value={mta} onChange={(e) => setMta(e.target.value)} placeholder="עיר בכל שורה" dir="rtl" />
+          </div>
+          <div className="space-y-1">
+            <Label>ערי י"ד</Label>
+            <Textarea rows={6} value={yad} onChange={(e) => setYad(e.target.value)} placeholder="עיר בכל שורה" dir="rtl" />
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={saveSetting.isPending}>שמור ערים</Button>
+        <p className="text-xs text-muted-foreground">אם רשימה ריקה — כל הערים (מלבד ירושלים) זמינות למשימה זו.</p>
+      </CardContent>
+    </Card>
   );
 }

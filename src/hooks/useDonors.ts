@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { getDonors, addDonor, updateDonor, deleteDonor, deleteDonorsBatch, resetDonorSequence, addDonorsBatch, Donor } from "@/lib/store";
 
 export function useDonors() {
@@ -38,6 +39,23 @@ export function useDeleteDonorsBatch() {
   return useMutation({
     mutationFn: (ids: number[]) => deleteDonorsBatch(ids),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["donors"] }),
+  });
+}
+
+export function useDeleteAllDonors() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error: me } = await supabase.from("group_members").delete().neq("id", 0);
+      if (me) throw me;
+      const { error } = await supabase.from("donors").delete().neq("id", 0);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["donors"] });
+      qc.invalidateQueries({ queryKey: ["group_members"] });
+      qc.invalidateQueries({ queryKey: ["group_members_all"] });
+    },
   });
 }
 

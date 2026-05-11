@@ -27,7 +27,6 @@ export type Database = {
           is_new: boolean
           last_name: string
           notes: string
-          phone: string
           shiur: string
           title: string
           updated_at: string
@@ -45,7 +44,6 @@ export type Database = {
           is_new?: boolean
           last_name?: string
           notes?: string
-          phone?: string
           shiur?: string
           title?: string
           updated_at?: string
@@ -63,7 +61,6 @@ export type Database = {
           is_new?: boolean
           last_name?: string
           notes?: string
-          phone?: string
           shiur?: string
           title?: string
           updated_at?: string
