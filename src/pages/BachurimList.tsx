@@ -46,6 +46,10 @@ export default function BachurimList() {
 
   const saveEdit = () => {
     if (!editBachur) return;
+    if (!editBachur.first_name.trim()) return toast.error("שם פרטי הוא שדה חובה");
+    if (!editBachur.last_name.trim()) return toast.error("שם משפחה הוא שדה חובה");
+    if (!editBachur.yeshiva?.trim()) return toast.error("יש לבחור ישיבה");
+    if (!editBachur.shiur?.trim()) return toast.error("יש לבחור שיעור");
     updateBachur.mutate(
       { id: editBachur.id, updates: { first_name: editBachur.first_name, last_name: editBachur.last_name, father_name: editBachur.father_name, yeshiva: editBachur.yeshiva, shiur: editBachur.shiur, notes: editBachur.notes } },
       { onSuccess: () => { setEditBachur(null); toast.success("הבחור עודכן"); } }
