@@ -54,10 +54,13 @@ export default function AddDonor() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.first_name.trim() && !form.last_name.trim()) {
-      toast.error("יש להזין שם פרטי או שם משפחה");
-      return;
-    }
+    if (!form.title.trim()) return toast.error("יש לבחור תואר");
+    if (!form.first_name.trim()) return toast.error("יש להזין שם פרטי");
+    if (!form.last_name.trim()) return toast.error("יש להזין שם משפחה");
+    if (!form.phone.trim()) return toast.error("יש להזין טלפון");
+    if (!form.city.trim()) return toast.error("יש להזין עיר");
+    if (!form.address.trim()) return toast.error("יש להזין כתובת");
+    if (!form.house_number.trim()) return toast.error("יש להזין מספר בית");
     addDonor.mutate(form, {
       onSuccess: () => {
         toast.success("התורם נוסף בהצלחה");
