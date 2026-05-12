@@ -27,10 +27,10 @@ export default function AddBachur() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.first_name.trim() && !form.last_name.trim()) {
-      toast.error("יש להזין שם פרטי או שם משפחה");
-      return;
-    }
+    if (!form.first_name.trim()) return toast.error("יש להזין שם פרטי");
+    if (!form.last_name.trim()) return toast.error("יש להזין שם משפחה");
+    if (!form.yeshiva.trim()) return toast.error("יש לבחור ישיבה");
+    if (!form.shiur.trim()) return toast.error("יש לבחור שיעור");
     addBachur.mutate(form, {
       onSuccess: () => {
         toast.success("הבחור נוסף בהצלחה");
