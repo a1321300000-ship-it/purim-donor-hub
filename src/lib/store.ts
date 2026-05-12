@@ -73,6 +73,7 @@ export async function getSettings(): Promise<AppSettings> {
       access_pin: "9999",
       mta_cities: [],
       yad_cities: [],
+      telephones_city: "",
     };
   }
 
@@ -86,6 +87,7 @@ export async function getSettings(): Promise<AppSettings> {
     access_pin: (typeof map.access_pin === "string" ? map.access_pin : "9999"),
     mta_cities: Array.isArray(map.mta_cities) ? map.mta_cities : [],
     yad_cities: Array.isArray(map.yad_cities) ? map.yad_cities : [],
+    telephones_city: typeof map.telephones_city === "string" ? map.telephones_city : "",
   };
 }
 
