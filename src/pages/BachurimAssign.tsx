@@ -95,7 +95,11 @@ export default function BachurimAssign() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
+      {!mission ? (
+        <div className="text-center py-16 text-muted-foreground border rounded-lg bg-muted/20">
+          בחר משימה כדי להציג קבוצות ובחורים זמינים
+        </div>
+      ) : (
         {/* Available bachurim */}
         <Card className="h-fit lg:sticky lg:top-4">
           <CardHeader className="pb-2">
