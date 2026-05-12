@@ -291,7 +291,7 @@ export default function DonorMapping() {
             <div className="space-y-1">
               <Label>סוג משימה</Label>
               <Select value={taskType} onValueChange={setTaskType}>
-                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-40"><SelectValue placeholder="בחר משימה..." /></SelectTrigger>
                 <SelectContent className="z-[1000]">
                   {TASK_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
