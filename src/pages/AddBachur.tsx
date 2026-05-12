@@ -27,10 +27,10 @@ export default function AddBachur() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.first_name.trim() && !form.last_name.trim()) {
-      toast.error("יש להזין שם פרטי או שם משפחה");
-      return;
-    }
+    if (!form.first_name.trim()) return toast.error("יש להזין שם פרטי");
+    if (!form.last_name.trim()) return toast.error("יש להזין שם משפחה");
+    if (!form.yeshiva.trim()) return toast.error("יש לבחור ישיבה");
+    if (!form.shiur.trim()) return toast.error("יש לבחור שיעור");
     addBachur.mutate(form, {
       onSuccess: () => {
         toast.success("הבחור נוסף בהצלחה");
@@ -51,11 +51,11 @@ export default function AddBachur() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>שם פרטי *</Label>
-                <Input value={form.first_name} onChange={(e) => set("first_name", e.target.value)} />
+                <Input required value={form.first_name} onChange={(e) => set("first_name", e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>שם משפחה</Label>
-                <Input value={form.last_name} onChange={(e) => set("last_name", e.target.value)} />
+                <Label>שם משפחה *</Label>
+                <Input required value={form.last_name} onChange={(e) => set("last_name", e.target.value)} />
               </div>
             </div>
             <div className="space-y-2">
@@ -64,7 +64,7 @@ export default function AddBachur() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>ישיבה</Label>
+                <Label>ישיבה *</Label>
                 <Select value={form.yeshiva} onValueChange={(v) => set("yeshiva", v)}>
                   <SelectTrigger><SelectValue placeholder="בחר ישיבה" /></SelectTrigger>
                   <SelectContent>
@@ -73,7 +73,7 @@ export default function AddBachur() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>שיעור</Label>
+                <Label>שיעור *</Label>
                 <Select value={form.shiur} onValueChange={(v) => set("shiur", v)}>
                   <SelectTrigger><SelectValue placeholder="בחר שיעור" /></SelectTrigger>
                   <SelectContent>

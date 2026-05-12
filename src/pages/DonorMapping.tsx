@@ -75,7 +75,7 @@ export default function DonorMapping() {
   const { data: allMembers = [] } = useAllGroupMembers();
   const createGroupsBatch = useCreateGroupsBatch();
 
-  const [taskType, setTaskType] = useState('מת"א');
+  const [taskType, setTaskType] = useState("");
   const [transportType, setTransportType] = useState("");
   const [groupSize, setGroupSize] = useState(10);
   const [geocodedDonors, setGeocodedDonors] = useState<Map<number, [number, number]>>(new Map());
@@ -92,6 +92,7 @@ export default function DonorMapping() {
 
   // Filter donors by mission city rules
   const activeDonors = useMemo(() => {
+    if (!taskType) return [];
     return donors.filter((d) => {
       if (d.archived_at) return false;
       if (assignedDonorIds.has(d.id)) return false;
@@ -290,7 +291,7 @@ export default function DonorMapping() {
             <div className="space-y-1">
               <Label>סוג משימה</Label>
               <Select value={taskType} onValueChange={setTaskType}>
-                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-40"><SelectValue placeholder="בחר משימה..." /></SelectTrigger>
                 <SelectContent className="z-[1000]">
                   {TASK_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>

@@ -46,6 +46,10 @@ export default function BachurimList() {
 
   const saveEdit = () => {
     if (!editBachur) return;
+    if (!editBachur.first_name.trim()) return toast.error("שם פרטי הוא שדה חובה");
+    if (!editBachur.last_name.trim()) return toast.error("שם משפחה הוא שדה חובה");
+    if (!editBachur.yeshiva?.trim()) return toast.error("יש לבחור ישיבה");
+    if (!editBachur.shiur?.trim()) return toast.error("יש לבחור שיעור");
     updateBachur.mutate(
       { id: editBachur.id, updates: { first_name: editBachur.first_name, last_name: editBachur.last_name, father_name: editBachur.father_name, yeshiva: editBachur.yeshiva, shiur: editBachur.shiur, notes: editBachur.notes } },
       { onSuccess: () => { setEditBachur(null); toast.success("הבחור עודכן"); } }
@@ -154,10 +158,7 @@ export default function BachurimList() {
                 <div className="space-y-2"><Label>שם פרטי</Label><Input value={editBachur.first_name} onChange={(e) => setEditBachur({ ...editBachur, first_name: e.target.value })} /></div>
                 <div className="space-y-2"><Label>שם משפחה</Label><Input value={editBachur.last_name} onChange={(e) => setEditBachur({ ...editBachur, last_name: e.target.value })} /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2"><Label>שם האב</Label><Input value={editBachur.father_name} onChange={(e) => setEditBachur({ ...editBachur, father_name: e.target.value })} /></div>
-                <div className="space-y-2"><Label>עיר</Label><Input value={editBachur.city || ""} onChange={(e) => setEditBachur({ ...editBachur, city: e.target.value })} /></div>
-              </div>
+              <div className="space-y-2"><Label>שם האב</Label><Input value={editBachur.father_name} onChange={(e) => setEditBachur({ ...editBachur, father_name: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>ישיבה</Label>

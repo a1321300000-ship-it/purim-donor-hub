@@ -54,6 +54,13 @@ export default function DonorManagement() {
 
   const saveEdit = () => {
     if (!editDonor) return;
+    if (!editDonor.title?.trim()) return toast.error("יש לבחור תואר");
+    if (!editDonor.first_name?.trim()) return toast.error("שם פרטי הוא שדה חובה");
+    if (!editDonor.last_name?.trim()) return toast.error("שם משפחה הוא שדה חובה");
+    if (!editDonor.phone?.trim()) return toast.error("טלפון הוא שדה חובה");
+    if (!editDonor.city?.trim()) return toast.error("עיר היא שדה חובה");
+    if (!editDonor.address?.trim()) return toast.error("כתובת היא שדה חובה");
+    if (!editDonor.house_number?.trim()) return toast.error("מספר בית הוא שדה חובה");
     updateDonor.mutate(
       {
         id: editDonor.id,

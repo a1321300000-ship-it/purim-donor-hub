@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Plus, X, Users } from "lucide-react";
 import { toast } from "sonner";
 
-const TASK_TYPES = ['מת"א', 'י"ד', 'ט"ו', 'ליל ט"ו'];
+const TASK_TYPES = ['מת"א', 'י"ד', 'ט"ו', 'ליל ט"ו', 'טלפונים'];
 
 export default function BachurimAssign() {
   const { data: bachurim = [] } = useBachurim();
@@ -18,7 +18,7 @@ export default function BachurimAssign() {
   const assignBachur = useAssignBachur();
   const unassignBachur = useUnassignBachur();
 
-  const [mission, setMission] = useState<string>('מת"א');
+  const [mission, setMission] = useState<string>("");
   const [bachurSearch, setBachurSearch] = useState("");
   const [groupSearch, setGroupSearch] = useState("");
 
@@ -83,7 +83,7 @@ export default function BachurimAssign() {
           <div className="space-y-1">
             <Label>משימה</Label>
             <Select value={mission} onValueChange={setMission}>
-              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-40"><SelectValue placeholder="בחר משימה..." /></SelectTrigger>
               <SelectContent>
                 {TASK_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
               </SelectContent>
@@ -95,6 +95,11 @@ export default function BachurimAssign() {
         </CardContent>
       </Card>
 
+      {!mission ? (
+        <div className="text-center py-16 text-muted-foreground border rounded-lg bg-muted/20">
+          בחר משימה כדי להציג קבוצות ובחורים זמינים
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
         {/* Available bachurim */}
         <Card className="h-fit lg:sticky lg:top-4">
@@ -198,6 +203,7 @@ export default function BachurimAssign() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
