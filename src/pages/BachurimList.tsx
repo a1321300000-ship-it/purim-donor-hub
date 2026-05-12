@@ -154,10 +154,7 @@ export default function BachurimList() {
                 <div className="space-y-2"><Label>שם פרטי</Label><Input value={editBachur.first_name} onChange={(e) => setEditBachur({ ...editBachur, first_name: e.target.value })} /></div>
                 <div className="space-y-2"><Label>שם משפחה</Label><Input value={editBachur.last_name} onChange={(e) => setEditBachur({ ...editBachur, last_name: e.target.value })} /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2"><Label>שם האב</Label><Input value={editBachur.father_name} onChange={(e) => setEditBachur({ ...editBachur, father_name: e.target.value })} /></div>
-                <div className="space-y-2"><Label>עיר</Label><Input value={editBachur.city || ""} onChange={(e) => setEditBachur({ ...editBachur, city: e.target.value })} /></div>
-              </div>
+              <div className="space-y-2"><Label>שם האב</Label><Input value={editBachur.father_name} onChange={(e) => setEditBachur({ ...editBachur, father_name: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>ישיבה</Label>
