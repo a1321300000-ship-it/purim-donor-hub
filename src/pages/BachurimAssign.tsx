@@ -18,7 +18,7 @@ export default function BachurimAssign() {
   const assignBachur = useAssignBachur();
   const unassignBachur = useUnassignBachur();
 
-  const [mission, setMission] = useState<string>('מת"א');
+  const [mission, setMission] = useState<string>("");
   const [bachurSearch, setBachurSearch] = useState("");
   const [groupSearch, setGroupSearch] = useState("");
 
