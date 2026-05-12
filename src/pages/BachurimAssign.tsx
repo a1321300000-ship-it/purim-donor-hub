@@ -100,6 +100,7 @@ export default function BachurimAssign() {
           בחר משימה כדי להציג קבוצות ובחורים זמינים
         </div>
       ) : (
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
         {/* Available bachurim */}
         <Card className="h-fit lg:sticky lg:top-4">
           <CardHeader className="pb-2">
