@@ -80,7 +80,7 @@ export default function AddDonor() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
-                <Label>תואר</Label>
+                <Label>תואר *</Label>
                 <Select value={form.title} onValueChange={(v) => set("title", v)}>
                   <SelectTrigger><SelectValue placeholder="בחר תואר" /></SelectTrigger>
                   <SelectContent>
@@ -92,11 +92,11 @@ export default function AddDonor() {
               </div>
               <div className="space-y-2">
                 <Label>שם פרטי *</Label>
-                <Input value={form.first_name} onChange={(e) => set("first_name", e.target.value)} />
+                <Input required value={form.first_name} onChange={(e) => set("first_name", e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>שם משפחה</Label>
-                <Input value={form.last_name} onChange={(e) => set("last_name", e.target.value)} />
+                <Label>שם משפחה *</Label>
+                <Input required value={form.last_name} onChange={(e) => set("last_name", e.target.value)} />
               </div>
             </div>
 
@@ -106,8 +106,8 @@ export default function AddDonor() {
                 <Input value={form.father_name} onChange={(e) => set("father_name", e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>טלפון</Label>
-                <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+                <Label>טלפון *</Label>
+                <Input required value={form.phone} onChange={(e) => set("phone", e.target.value)} />
               </div>
             </div>
 
@@ -121,8 +121,8 @@ export default function AddDonor() {
             />
 
             <div className="space-y-2">
-              <Label>מספר בית</Label>
-              <Input value={form.house_number} onChange={(e) => set("house_number", e.target.value)} placeholder="מספר בית" />
+              <Label>מספר בית *</Label>
+              <Input required value={form.house_number} onChange={(e) => set("house_number", e.target.value)} placeholder="מספר בית" />
             </div>
 
             <div className="flex items-center gap-2">
