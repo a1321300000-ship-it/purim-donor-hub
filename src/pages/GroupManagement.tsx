@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   useGroups, useAllGroupMembers, useGroupBachurAssignments,
-  useDeleteGroup, useUpdateGroup, DonorGroup,
+  useDeleteGroup, useUpdateGroup, useGroupMembers, useUpdateMemberOrder, useRemoveGroupMember, DonorGroup,
 } from "@/hooks/useGroups";
 import { useDonors } from "@/hooks/useDonors";
 import { useBachurim } from "@/hooks/useBachurim";
@@ -20,11 +20,39 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Trash2, FileText, Pencil, Search } from "lucide-react";
+import { Trash2, FileText, Pencil, Search, GripVertical, X } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, useSortable, arrayMove, verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const TASK_TYPES = ['מת"א', 'י"ד', 'ט"ו', 'ליל ט"ו', 'טלפונים'];
 const TRANSPORT_TYPES = ["רגלי", "נסיעה/טנדר"];
+
+// Cache the Heebo font as base64 across calls
+let heeboBase64Cache: string | null = null;
+async function getHeeboBase64(): Promise<string | null> {
+  if (heeboBase64Cache) return heeboBase64Cache;
+  try {
+    const res = await fetch("/fonts/Heebo-Regular.ttf");
+    if (!res.ok) return null;
+    const buf = await res.arrayBuffer();
+    let binary = "";
+    const bytes = new Uint8Array(buf);
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
+    }
+    heeboBase64Cache = btoa(binary);
+    return heeboBase64Cache;
+  } catch {
+    return null;
+  }
+}
 
 export default function GroupManagement() {
   const { data: groups = [], isLoading } = useGroups();
@@ -48,7 +76,6 @@ export default function GroupManagement() {
     return map;
   }, [allMembers]);
 
-  // Derive city per group (from first member)
   const groupCityMap = useMemo(() => {
     const map = new Map<number, string>();
     const sortedMembers = [...allMembers].sort((a, b) => a.sort_order - b.sort_order);
@@ -76,73 +103,93 @@ export default function GroupManagement() {
     if (!editGroup) return;
     updateGroup.mutate(
       { id: editGroup.id, updates: { name: editGroup.name, task_type: editGroup.task_type, transport_type: editGroup.transport_type } },
-      { onSuccess: () => { toast.success("הקבוצה עודכנה"); setEditGroup(null); } }
+      { onSuccess: () => { toast.success("הקבוצה עודכנה"); } }
     );
   };
 
   const generatePDF = async (groupIds: number[]) => {
     const { default: jsPDF } = await import("jspdf");
-    let heeboBase64: string | null = null;
-    try {
-      const fontUrl = "https://cdn.jsdelivr.net/gh/nicholasgasior/gfonts-base64/fonts/heebo/Heebo-Regular.ttf.base64.txt";
-      heeboBase64 = await (await fetch(fontUrl)).text();
-    } catch {}
-    const doc = new jsPDF({ orientation: "landscape", putOnlyUsedFonts: true });
-    if (heeboBase64) {
-      doc.addFileToVFS("Heebo-Regular.ttf", heeboBase64);
+    const autoTableMod: any = await import("jspdf-autotable");
+    const autoTable = autoTableMod.default || autoTableMod;
+    const heebo = await getHeeboBase64();
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    if (heebo) {
+      doc.addFileToVFS("Heebo-Regular.ttf", heebo);
       doc.addFont("Heebo-Regular.ttf", "Heebo", "normal");
       doc.setFont("Heebo");
     }
+    doc.setR2L(true);
+
     let first = true;
     for (const gId of groupIds) {
       const group = groups.find((g) => g.id === gId);
       if (!group) continue;
       if (!first) doc.addPage();
       first = false;
-      if (heeboBase64) doc.setFont("Heebo");
+
       const pageW = doc.internal.pageSize.getWidth();
       doc.setFontSize(16);
-      doc.text(group.name, pageW - 10, 15, { align: "right" });
+      doc.text(group.name, pageW - 14, 14);
+      doc.setFontSize(10);
+      doc.text(`משימה: ${group.task_type} · שינוע: ${group.transport_type || "—"}`, pageW - 14, 21);
 
+      const gMembers = allMembers
+        .filter((m) => m.group_id === gId)
+        .sort((a, b) => a.sort_order - b.sort_order);
+
+      // Headers (RTL: rightmost first visually = first in array when R2L set)
+      const head = [["#", "שם תורם", "כתובת", "קומה", "הערות", "מזומן", "צ'ק", "לא ענה"]];
+      const body = gMembers.map((m, i) => {
+        const d = donorMap.get(m.donor_id);
+        if (!d) return [String(i + 1), "—", "—", "—", "—", "", "", ""];
+        const addr = `${d.address || ""} ${d.house_number || ""}, ${d.city || ""}`.trim();
+        return [String(i + 1), d.full_name || "—", addr, d.floor || "—", d.notes || "", "", "", ""];
+      });
+
+      autoTable(doc, {
+        head,
+        body,
+        startY: 26,
+        margin: { left: 10, right: 10 },
+        styles: {
+          font: heebo ? "Heebo" : "helvetica",
+          fontSize: 9,
+          halign: "right",
+          cellPadding: 2,
+          lineColor: [80, 80, 80],
+          lineWidth: 0.2,
+          minCellHeight: 10,
+        },
+        headStyles: {
+          fillColor: [30, 64, 124],
+          textColor: 255,
+          fontStyle: "normal",
+          halign: "right",
+        },
+        columnStyles: {
+          0: { cellWidth: 10, halign: "center" },
+          1: { cellWidth: 40 },
+          2: { cellWidth: 60 },
+          3: { cellWidth: 15, halign: "center" },
+          4: { cellWidth: 50 },
+          5: { cellWidth: 25 },
+          6: { cellWidth: 25 },
+          7: { cellWidth: 25 },
+        },
+      });
+
+      // Optional bachurim list at bottom
       const bNames = allAssignmentsData
         .filter((a) => a.group_id === gId)
         .map((a) => bachurMap.get(a.bachur_id)?.full_name)
         .filter(Boolean)
         .join(", ");
       if (bNames) {
-        doc.setFontSize(10);
-        doc.text(`בחורים: ${bNames}`, pageW - 10, 23, { align: "right" });
+        const finalY = (doc as any).lastAutoTable?.finalY || 26;
+        doc.setFontSize(9);
+        doc.text(`בחורים משובצים: ${bNames}`, pageW - 14, finalY + 8);
       }
-
-      const startY = 32;
-      const colWidths = [30, 50, 60, 25, 50, 50];
-      const headers = ["סכום תרומה", "הערות", "קומה/דירה", "מס׳ בית", "כתובת מלאה", "שם תורם"];
-      let x = pageW - 10;
-      doc.setFontSize(9);
-      doc.setDrawColor(0);
-      headers.forEach((h, i) => {
-        doc.rect(x - colWidths[i], startY, colWidths[i], 8);
-        doc.text(h, x - 2, startY + 5, { align: "right" });
-        x -= colWidths[i];
-      });
-
-      const gMembers = allMembers.filter((m) => m.group_id === gId).sort((a, b) => a.sort_order - b.sort_order);
-      gMembers.forEach((m, rowIdx) => {
-        const donor = donorMap.get(m.donor_id);
-        if (!donor) return;
-        const y = startY + 8 + rowIdx * 8;
-        const vals = ["", donor.notes || "", donor.floor || "", donor.house_number || "", `${donor.address}, ${donor.city}`, donor.full_name];
-        let rx = pageW - 10;
-        vals.forEach((v, i) => {
-          doc.rect(rx - colWidths[i], y, colWidths[i], 8);
-          doc.text(String(v).substring(0, 20), rx - 2, y + 5, { align: "right" });
-          rx -= colWidths[i];
-        });
-      });
-
-      const bottomY = doc.internal.pageSize.getHeight() - 20;
-      doc.setFontSize(10);
-      doc.text('סה"כ מזומן: _______   סה"כ צ\'קים: _______   סה"כ לא ענו: _______', pageW - 10, bottomY, { align: "right" });
     }
     doc.save("groups_report.pdf");
     toast.success("הדוח הופק בהצלחה");
@@ -211,43 +258,47 @@ export default function GroupManagement() {
         </CardContent>
       </Card>
 
-      {/* Edit modal — logistics only, no bachur names */}
+      {/* Edit modal: logistics + sortable donor list */}
       <Dialog open={!!editGroup} onOpenChange={(o) => !o && setEditGroup(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>עריכת קבוצה</DialogTitle></DialogHeader>
           {editGroup && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>שם קבוצה</Label>
-                <Input value={editGroup.name} onChange={(e) => setEditGroup({ ...editGroup, name: e.target.value })} />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>שם קבוצה</Label>
+                  <Input value={editGroup.name} onChange={(e) => setEditGroup({ ...editGroup, name: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>עיר</Label>
+                  <Input value={groupCityMap.get(editGroup.id) || "—"} disabled className="text-muted-foreground" />
+                </div>
+                <div className="space-y-2">
+                  <Label>סוג משימה</Label>
+                  <Select value={editGroup.task_type} onValueChange={(v) => setEditGroup({ ...editGroup, task_type: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {TASK_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>סוג שינוע</Label>
+                  <Select value={editGroup.transport_type} onValueChange={(v) => setEditGroup({ ...editGroup, transport_type: v })}>
+                    <SelectTrigger><SelectValue placeholder="בחר סוג שינוע" /></SelectTrigger>
+                    <SelectContent>
+                      {TRANSPORT_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>סוג משימה</Label>
-                <Select value={editGroup.task_type} onValueChange={(v) => setEditGroup({ ...editGroup, task_type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {TASK_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>עיר</Label>
-                <Input value={groupCityMap.get(editGroup.id) || "—"} disabled className="text-muted-foreground" />
-              </div>
-              <div className="space-y-2">
-                <Label>סוג שינוע</Label>
-                <Select value={editGroup.transport_type} onValueChange={(v) => setEditGroup({ ...editGroup, transport_type: v })}>
-                  <SelectTrigger><SelectValue placeholder="בחר סוג שינוע" /></SelectTrigger>
-                  <SelectContent>
-                    {TRANSPORT_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+
+              <SortableMembersPanel groupId={editGroup.id} />
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditGroup(null)}>ביטול</Button>
-            <Button onClick={handleSaveEdit} disabled={updateGroup.isPending}>שמור</Button>
+            <Button variant="outline" onClick={() => setEditGroup(null)}>סגור</Button>
+            <Button onClick={handleSaveEdit} disabled={updateGroup.isPending}>שמור פרטים</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -264,6 +315,95 @@ export default function GroupManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+/* ----- Sortable members list ----- */
+
+function SortableMembersPanel({ groupId }: { groupId: number }) {
+  const { data: members = [] } = useGroupMembers(groupId);
+  const { data: donors = [] } = useDonors();
+  const updateOrder = useUpdateMemberOrder();
+  const removeMember = useRemoveGroupMember();
+
+  const donorMap = useMemo(() => new Map(donors.map((d) => [d.id, d])), [donors]);
+  const [items, setItems] = useState<{ id: number; donor_id: number }[]>([]);
+
+  useEffect(() => {
+    setItems([...members].sort((a, b) => a.sort_order - b.sort_order).map((m) => ({ id: m.id, donor_id: m.donor_id })));
+  }, [members]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = items.findIndex((i) => i.id === active.id);
+    const newIdx = items.findIndex((i) => i.id === over.id);
+    const newOrder = arrayMove(items, oldIdx, newIdx);
+    setItems(newOrder);
+    // Auto-save the new order
+    const updates = newOrder.map((it, idx) => ({ id: it.id, sort_order: idx }));
+    updateOrder.mutate(updates, {
+      onSuccess: () => toast.success("הסדר עודכן"),
+      onError: () => toast.error("שגיאה בעדכון הסדר"),
+    });
+  };
+
+  const handleRemove = (id: number) => {
+    removeMember.mutate(id, {
+      onSuccess: () => toast.success("התורם הוסר מהקבוצה"),
+      onError: () => toast.error("שגיאה בהסרה"),
+    });
+  };
+
+  return (
+    <div className="space-y-2 border-t pt-3">
+      <Label>תורמים בקבוצה ({items.length}) — גרור לסידור</Label>
+      <div className="border rounded-lg max-h-64 overflow-y-auto bg-muted/20 p-1">
+        {items.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">אין תורמים בקבוצה זו</p>
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+              {items.map((it, idx) => {
+                const d = donorMap.get(it.donor_id);
+                return (
+                  <SortableMemberRow
+                    key={it.id}
+                    id={it.id}
+                    index={idx + 1}
+                    label={d ? `${d.full_name} — ${d.address} ${d.house_number}, ${d.city}` : `#${it.donor_id}`}
+                    onRemove={() => handleRemove(it.id)}
+                  />
+                );
+              })}
+            </SortableContext>
+          </DndContext>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SortableMemberRow({ id, index, label, onRemove }: { id: number; index: number; label: string; onRemove: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 bg-card border rounded-md px-2 py-1.5 mb-1 text-sm">
+      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-muted-foreground" type="button">
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <span className="text-xs text-muted-foreground w-6 text-center">{index}</span>
+      <span className="flex-1 truncate">{label}</span>
+      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={onRemove} title="הסר">
+        <X className="h-3.5 w-3.5" />
+      </Button>
     </div>
   );
 }
