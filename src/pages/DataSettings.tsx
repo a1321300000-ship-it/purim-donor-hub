@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useSettings, useSaveSetting } from "@/hooks/useSettings";
 import { useDonors, useAddDonorsBatch, useDeleteDonorsBatch, useDeleteAllDonors, useResetDonorSequence } from "@/hooks/useDonors";
 import { useBachurim, useAddBachurimBatch, useDeleteBachurimBatch, useResetBachurSequence } from "@/hooks/useBachurim";
