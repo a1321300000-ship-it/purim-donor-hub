@@ -83,7 +83,7 @@ export default function BachurimAssign() {
           <div className="space-y-1">
             <Label>משימה</Label>
             <Select value={mission} onValueChange={setMission}>
-              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-40"><SelectValue placeholder="בחר משימה..." /></SelectTrigger>
               <SelectContent>
                 {TASK_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
               </SelectContent>
