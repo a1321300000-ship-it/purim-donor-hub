@@ -92,6 +92,7 @@ export default function DonorMapping() {
 
   // Filter donors by mission city rules
   const activeDonors = useMemo(() => {
+    if (!taskType) return [];
     return donors.filter((d) => {
       if (d.archived_at) return false;
       if (assignedDonorIds.has(d.id)) return false;
