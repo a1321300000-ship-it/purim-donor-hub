@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Plus, X, Users } from "lucide-react";
 import { toast } from "sonner";
 
-const TASK_TYPES = ['מת"א', 'י"ד', 'ט"ו', 'ליל ט"ו'];
+const TASK_TYPES = ['מת"א', 'י"ד', 'ט"ו', 'ליל ט"ו', 'טלפונים'];
 
 export default function BachurimAssign() {
   const { data: bachurim = [] } = useBachurim();
