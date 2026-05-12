@@ -23,7 +23,7 @@ import {
 import { Trash2, FileText, Pencil, Search } from "lucide-react";
 import { toast } from "sonner";
 
-const TASK_TYPES = ['מת"א', 'י"ד', 'ט"ו', 'ליל ט"ו'];
+const TASK_TYPES = ['מת"א', 'י"ד', 'ט"ו', 'ליל ט"ו', 'טלפונים'];
 const TRANSPORT_TYPES = ["רגלי", "נסיעה/טנדר"];
 
 export default function GroupManagement() {
