@@ -75,7 +75,7 @@ export default function DonorMapping() {
   const { data: allMembers = [] } = useAllGroupMembers();
   const createGroupsBatch = useCreateGroupsBatch();
 
-  const [taskType, setTaskType] = useState('מת"א');
+  const [taskType, setTaskType] = useState("");
   const [transportType, setTransportType] = useState("");
   const [groupSize, setGroupSize] = useState(10);
   const [geocodedDonors, setGeocodedDonors] = useState<Map<number, [number, number]>>(new Map());
