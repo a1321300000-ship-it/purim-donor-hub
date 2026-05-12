@@ -53,6 +53,7 @@ export interface AppSettings {
   access_pin: string;
   mta_cities: string[];
   yad_cities: string[];
+  telephones_city: string;
 }
 
 export const TITLE_OPTIONS = ["הרב", "הרה\"ג", "מר", "גב'", "ד\"ר", "פרופ'"];
