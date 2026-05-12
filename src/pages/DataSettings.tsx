@@ -716,47 +716,127 @@ export default function DataSettings() {
 
 function MissionCitiesCard() {
   const { data: settings } = useSettings();
+  const { data: donors = [] } = useDonors();
+  const { data: groups = [] } = useGroups();
   const saveSetting = useSaveSetting();
-  const [mta, setMta] = useState("");
-  const [yad, setYad] = useState("");
 
-  useEffect(() => {
-    setMta((settings?.mta_cities || []).join("\n"));
-    setYad((settings?.yad_cities || []).join("\n"));
-  }, [settings?.mta_cities, settings?.yad_cities]);
+  const allCities = useMemo(
+    () => [...new Set(donors.map((d) => d.city).filter((c) => c && c.trim() && c !== "ירושלים"))].sort(),
+    [donors]
+  );
+  const allCitiesIncludingJerusalem = useMemo(
+    () => [...new Set(donors.map((d) => d.city).filter(Boolean))].sort(),
+    [donors]
+  );
 
-  const parse = (txt: string) =>
-    txt.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+  const mta = settings?.mta_cities || [];
+  const yad = settings?.yad_cities || [];
+  const telephonesCity = settings?.telephones_city || "";
 
-  const handleSave = async () => {
-    await saveSetting.mutateAsync({ key: "mta_cities", value: parse(mta) });
-    await saveSetting.mutateAsync({ key: "yad_cities", value: parse(yad) });
-    toast.success("ערי המשימות נשמרו");
+  const toggleCity = async (key: "mta_cities" | "yad_cities", city: string) => {
+    const current = (settings?.[key] as string[]) || [];
+    const next = current.includes(city) ? current.filter((c) => c !== city) : [...current, city];
+    await saveSetting.mutateAsync({ key, value: next });
+  };
+
+  const handleTelephonesSave = async (city: string) => {
+    await saveSetting.mutateAsync({ key: "telephones_city", value: city });
+    if (!city) { toast.success("נשמר"); return; }
+    // Auto-create/refresh "Telephones" group
+    try {
+      const cityDonors = donors.filter((d) => d.city === city && !d.archived_at);
+      const existing = groups.filter((g) => g.task_type === "טלפונים");
+      // Delete existing telephones groups
+      for (const g of existing) {
+        await supabase.from("group_members").delete().eq("group_id", g.id);
+        await supabase.from("group_bachur_assignments").delete().eq("group_id", g.id);
+        await supabase.from("donor_groups").delete().eq("id", g.id);
+      }
+      // Remove these donors from any other group they belong to (UNIQUE donor constraint)
+      const ids = cityDonors.map((d) => d.id);
+      if (ids.length > 0) {
+        await supabase.from("group_members").delete().in("donor_id", ids);
+      }
+      const { data: newGroup, error } = await supabase
+        .from("donor_groups")
+        .insert({ name: `טלפונים - ${city}`, task_type: "טלפונים", transport_type: "" })
+        .select().single();
+      if (error) throw error;
+      if (cityDonors.length > 0) {
+        const { error: mErr } = await supabase.from("group_members").insert(
+          cityDonors.map((d, i) => ({ group_id: (newGroup as any).id, donor_id: d.id, sort_order: i }))
+        );
+        if (mErr) throw mErr;
+      }
+      toast.success(`קבוצת טלפונים נוצרה עם ${cityDonors.length} תורמים`);
+    } catch (e) {
+      toast.error("שגיאה ביצירת קבוצת טלפונים");
+    }
   };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" />ערי המשימות</CardTitle>
-        <CardDescription>
-          הגדר אילו ערים שייכות למשימת מת"א ואילו לי"ד. הזן עיר אחת בכל שורה (או מופרדות בפסיק).
-          ירושלים משויכת אוטומטית למשימת ט"ו בלבד.
-        </CardDescription>
+        <CardDescription>בחר ערים מתוך רשימת התורמים. ירושלים משויכת אוטומטית לט"ו בלבד.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label>ערי מת"א</Label>
-            <Textarea rows={6} value={mta} onChange={(e) => setMta(e.target.value)} placeholder="עיר בכל שורה" dir="rtl" />
+            <CityMultiSelect cities={allCities} selected={mta} onToggle={(c) => toggleCity("mta_cities", c)} />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label>ערי י"ד</Label>
-            <Textarea rows={6} value={yad} onChange={(e) => setYad(e.target.value)} placeholder="עיר בכל שורה" dir="rtl" />
+            <CityMultiSelect cities={allCities} selected={yad} onToggle={(c) => toggleCity("yad_cities", c)} />
           </div>
         </div>
-        <Button onClick={handleSave} disabled={saveSetting.isPending}>שמור ערים</Button>
-        <p className="text-xs text-muted-foreground">אם רשימה ריקה — כל הערים (מלבד ירושלים) זמינות למשימה זו.</p>
+        <div className="border-t pt-4 space-y-2">
+          <Label>משימת טלפונים — עיר</Label>
+          <Select value={telephonesCity || "_none"} onValueChange={(v) => handleTelephonesSave(v === "_none" ? "" : v)}>
+            <SelectTrigger className="max-w-xs"><SelectValue placeholder="בחר עיר..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">— ללא —</SelectItem>
+              {allCitiesIncludingJerusalem.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            בחירת עיר תיצור אוטומטית קבוצה בשם "טלפונים" ותשייך אליה את כל התורמים מהעיר.
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground">אם רשימת מת"א/י"ד ריקה — כל הערים (מלבד ירושלים) זמינות.</p>
       </CardContent>
     </Card>
+  );
+}
+
+function CityMultiSelect({ cities, selected, onToggle }: { cities: string[]; selected: string[]; onToggle: (c: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1 min-h-[28px] border rounded-md p-1.5 bg-muted/20">
+        {selected.length === 0 && <span className="text-xs text-muted-foreground px-1">לא נבחרו ערים</span>}
+        {selected.map((c) => (
+          <span key={c} className="inline-flex items-center gap-1 bg-primary/10 text-xs rounded-full px-2 py-0.5">
+            {c}
+            <button onClick={() => onToggle(c)} className="hover:text-destructive" type="button">×</button>
+          </span>
+        ))}
+      </div>
+      <Button type="button" variant="outline" size="sm" onClick={() => setOpen((o) => !o)}>
+        {open ? "סגור" : "בחר ערים..."}
+      </Button>
+      {open && (
+        <div className="border rounded-md p-2 max-h-48 overflow-y-auto space-y-1 bg-card">
+          {cities.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">אין ערים זמינות (הוסף תורמים תחילה)</p>}
+          {cities.map((c) => (
+            <label key={c} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5">
+              <Checkbox checked={selected.includes(c)} onCheckedChange={() => onToggle(c)} />
+              {c}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
