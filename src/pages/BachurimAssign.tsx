@@ -203,6 +203,7 @@ export default function BachurimAssign() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
