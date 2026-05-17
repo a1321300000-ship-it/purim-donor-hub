@@ -53,7 +53,7 @@ async function geocodeAddress(city: string, address: string, houseNumber: string
   return null;
 }
 
-const TASK_TYPES = ['מת"א', 'י"ד', 'ט"ו', 'ליל ט"ו'];
+const TASK_TYPES = ['מת"א', 'י"ד', 'ט"ו', 'ליל ט"ו', 'טלפונים'];
 const TRANSPORT_TYPES = [
   { value: "רגלי", label: "רגלי" },
   { value: "נסיעה/טנדר", label: "נסיעה/טנדר" },
