@@ -130,52 +130,59 @@ export default function GroupManagement() {
 
       const pageW = doc.internal.pageSize.getWidth();
       doc.setFontSize(16);
-      doc.text(group.name, pageW - 14, 14);
+      doc.text(group.name, pageW - 16, 14, { align: "right" });
       doc.setFontSize(10);
-      doc.text(`משימה: ${group.task_type} · שינוע: ${group.transport_type || "—"}`, pageW - 14, 21);
+      const transport = group.transport_type && group.transport_type.trim() ? group.transport_type : "לא הוגדר";
+      doc.text(`משימה: ${group.task_type}   |   שינוע: ${transport}`, pageW - 16, 21, { align: "right" });
 
       const gMembers = allMembers
         .filter((m) => m.group_id === gId)
         .sort((a, b) => a.sort_order - b.sort_order);
 
-      // Headers (RTL: rightmost first visually = first in array when R2L set)
-      const head = [["#", "שם תורם", "כתובת", "קומה", "הערות", "מזומן", "צ'ק", "לא ענה"]];
+      // jspdf-autotable renders columns left-to-right in array order regardless of setR2L.
+      // To get RTL visual order (right-most first), we list them reversed in the array.
+      // Visual right→left: #, שם תורם, כתובת, קומה, הערות, מזומן, צ'ק, לא ענה
+      // => array (left→right): לא ענה, צ'ק, מזומן, הערות, קומה, כתובת, שם תורם, #
+      const head = [["לא ענה", "צ'ק", "מזומן", "הערות", "קומה", "כתובת", "שם תורם", "#"]];
       const body = gMembers.map((m, i) => {
         const d = donorMap.get(m.donor_id);
-        if (!d) return [String(i + 1), "—", "—", "—", "—", "", "", ""];
+        if (!d) return ["", "", "", "—", "—", "—", "—", String(i + 1)];
         const addr = `${d.address || ""} ${d.house_number || ""}, ${d.city || ""}`.trim();
-        return [String(i + 1), d.full_name || "—", addr, d.floor || "—", d.notes || "", "", "", ""];
+        return ["", "", "", d.notes || "", d.floor || "—", addr, d.full_name || "—", String(i + 1)];
       });
 
       autoTable(doc, {
         head,
         body,
         startY: 26,
-        margin: { left: 10, right: 10 },
+        margin: { left: 12, right: 12 },
+        tableWidth: "auto",
         styles: {
           font: heebo ? "Heebo" : "helvetica",
           fontSize: 9,
           halign: "right",
-          cellPadding: 2,
+          cellPadding: { top: 2, right: 3, bottom: 2, left: 3 },
           lineColor: [80, 80, 80],
           lineWidth: 0.2,
-          minCellHeight: 10,
+          minCellHeight: 12,
+          overflow: "linebreak",
         },
         headStyles: {
           fillColor: [30, 64, 124],
           textColor: 255,
           fontStyle: "normal",
           halign: "right",
+          minCellHeight: 10,
         },
         columnStyles: {
-          0: { cellWidth: 10, halign: "center" },
-          1: { cellWidth: 40 },
-          2: { cellWidth: 60 },
-          3: { cellWidth: 15, halign: "center" },
-          4: { cellWidth: 50 },
-          5: { cellWidth: 25 },
-          6: { cellWidth: 25 },
-          7: { cellWidth: 25 },
+          0: { cellWidth: 24, halign: "center", minCellHeight: 14 }, // לא ענה
+          1: { cellWidth: 24, halign: "center", minCellHeight: 14 }, // צ'ק
+          2: { cellWidth: 24, halign: "center", minCellHeight: 14 }, // מזומן
+          3: { cellWidth: 45, halign: "right" },                     // הערות
+          4: { cellWidth: 14, halign: "center" },                    // קומה
+          5: { cellWidth: 65, halign: "right" },                     // כתובת
+          6: { cellWidth: 45, halign: "right" },                     // שם תורם
+          7: { cellWidth: 10, halign: "center" },                    // #
         },
       });
 

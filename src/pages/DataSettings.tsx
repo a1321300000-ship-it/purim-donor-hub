@@ -785,11 +785,11 @@ function MissionCitiesCard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label>ערי מת"א</Label>
-            <CityMultiSelect cities={allCities} selected={mta} onToggle={(c) => toggleCity("mta_cities", c)} />
+            <CityMultiSelect cities={allCities} selected={mta} excluded={yad} onToggle={(c) => toggleCity("mta_cities", c)} />
           </div>
           <div className="space-y-2">
             <Label>ערי י"ד</Label>
-            <CityMultiSelect cities={allCities} selected={yad} onToggle={(c) => toggleCity("yad_cities", c)} />
+            <CityMultiSelect cities={allCities} selected={yad} excluded={mta} onToggle={(c) => toggleCity("yad_cities", c)} />
           </div>
         </div>
         <div className="border-t pt-4 space-y-2">
@@ -811,8 +811,9 @@ function MissionCitiesCard() {
   );
 }
 
-function CityMultiSelect({ cities, selected, onToggle }: { cities: string[]; selected: string[]; onToggle: (c: string) => void }) {
+function CityMultiSelect({ cities, selected, excluded = [], onToggle }: { cities: string[]; selected: string[]; excluded?: string[]; onToggle: (c: string) => void }) {
   const [open, setOpen] = useState(false);
+  const excludedSet = useMemo(() => new Set(excluded), [excluded]);
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1 min-h-[28px] border rounded-md p-1.5 bg-muted/20">
@@ -830,12 +831,20 @@ function CityMultiSelect({ cities, selected, onToggle }: { cities: string[]; sel
       {open && (
         <div className="border rounded-md p-2 max-h-48 overflow-y-auto space-y-1 bg-card">
           {cities.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">אין ערים זמינות (הוסף תורמים תחילה)</p>}
-          {cities.map((c) => (
-            <label key={c} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5">
-              <Checkbox checked={selected.includes(c)} onCheckedChange={() => onToggle(c)} />
-              {c}
-            </label>
-          ))}
+          {cities.map((c) => {
+            const isExcluded = excludedSet.has(c) && !selected.includes(c);
+            return (
+              <label
+                key={c}
+                className={`flex items-center gap-2 text-sm rounded px-1 py-0.5 ${isExcluded ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:bg-muted/50"}`}
+                title={isExcluded ? "עיר זו כבר משויכת למשימה השנייה" : undefined}
+              >
+                <Checkbox checked={selected.includes(c)} disabled={isExcluded} onCheckedChange={() => !isExcluded && onToggle(c)} />
+                <span>{c}</span>
+                {isExcluded && <span className="text-[10px] text-muted-foreground mr-auto">תפוס</span>}
+              </label>
+            );
+          })}
         </div>
       )}
     </div>
