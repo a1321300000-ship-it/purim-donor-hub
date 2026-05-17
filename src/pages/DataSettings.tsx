@@ -785,11 +785,11 @@ function MissionCitiesCard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label>ערי מת"א</Label>
-            <CityMultiSelect cities={allCities} selected={mta} onToggle={(c) => toggleCity("mta_cities", c)} />
+            <CityMultiSelect cities={allCities} selected={mta} excluded={yad} onToggle={(c) => toggleCity("mta_cities", c)} />
           </div>
           <div className="space-y-2">
             <Label>ערי י"ד</Label>
-            <CityMultiSelect cities={allCities} selected={yad} onToggle={(c) => toggleCity("yad_cities", c)} />
+            <CityMultiSelect cities={allCities} selected={yad} excluded={mta} onToggle={(c) => toggleCity("yad_cities", c)} />
           </div>
         </div>
         <div className="border-t pt-4 space-y-2">
