@@ -139,14 +139,16 @@ export default function GroupManagement() {
         .filter((m) => m.group_id === gId)
         .sort((a, b) => a.sort_order - b.sort_order);
 
-      // Visual order with R2L: array index 0 prints on the RIGHT.
-      // Required visual order (right→left): #, שם תורם, כתובת, קומה, הערות, מזומן, צ'ק, לא ענה
-      const head = [["#", "שם תורם", "כתובת", "קומה", "הערות", "מזומן", "צ'ק", "לא ענה"]];
+      // jspdf-autotable renders columns left-to-right in array order regardless of setR2L.
+      // To get RTL visual order (right-most first), we list them reversed in the array.
+      // Visual right→left: #, שם תורם, כתובת, קומה, הערות, מזומן, צ'ק, לא ענה
+      // => array (left→right): לא ענה, צ'ק, מזומן, הערות, קומה, כתובת, שם תורם, #
+      const head = [["לא ענה", "צ'ק", "מזומן", "הערות", "קומה", "כתובת", "שם תורם", "#"]];
       const body = gMembers.map((m, i) => {
         const d = donorMap.get(m.donor_id);
-        if (!d) return [String(i + 1), "—", "—", "—", "—", "", "", ""];
+        if (!d) return ["", "", "", "—", "—", "—", "—", String(i + 1)];
         const addr = `${d.address || ""} ${d.house_number || ""}, ${d.city || ""}`.trim();
-        return [String(i + 1), d.full_name || "—", addr, d.floor || "—", d.notes || "", "", "", ""];
+        return ["", "", "", d.notes || "", d.floor || "—", addr, d.full_name || "—", String(i + 1)];
       });
 
       autoTable(doc, {
@@ -173,14 +175,14 @@ export default function GroupManagement() {
           minCellHeight: 10,
         },
         columnStyles: {
-          0: { cellWidth: 10, halign: "center" },           // #
-          1: { cellWidth: 45, halign: "right" },            // שם תורם
-          2: { cellWidth: 65, halign: "right" },            // כתובת
-          3: { cellWidth: 14, halign: "center" },           // קומה
-          4: { cellWidth: 45, halign: "right" },            // הערות
-          5: { cellWidth: 24, halign: "center", minCellHeight: 14 }, // מזומן
-          6: { cellWidth: 24, halign: "center", minCellHeight: 14 }, // צ'ק
-          7: { cellWidth: 24, halign: "center", minCellHeight: 14 }, // לא ענה
+          0: { cellWidth: 24, halign: "center", minCellHeight: 14 }, // לא ענה
+          1: { cellWidth: 24, halign: "center", minCellHeight: 14 }, // צ'ק
+          2: { cellWidth: 24, halign: "center", minCellHeight: 14 }, // מזומן
+          3: { cellWidth: 45, halign: "right" },                     // הערות
+          4: { cellWidth: 14, halign: "center" },                    // קומה
+          5: { cellWidth: 65, halign: "right" },                     // כתובת
+          6: { cellWidth: 45, halign: "right" },                     // שם תורם
+          7: { cellWidth: 10, halign: "center" },                    // #
         },
       });
 
