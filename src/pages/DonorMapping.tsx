@@ -89,14 +89,19 @@ export default function DonorMapping() {
 
   const mtaCities = settings?.mta_cities || [];
   const yadCities = settings?.yad_cities || [];
+  const telephonesCity = settings?.telephones_city || "";
 
   // Filter donors by mission city rules
   const activeDonors = useMemo(() => {
     if (!taskType) return [];
     return donors.filter((d) => {
       if (d.archived_at) return false;
-      if (assignedDonorIds.has(d.id)) return false;
       const city = (d.city || "").trim();
+      if (taskType === "טלפונים") {
+        // Show all donors of the configured telephones city (already assigned to the auto group)
+        return telephonesCity ? city === telephonesCity : false;
+      }
+      if (assignedDonorIds.has(d.id)) return false;
       if (taskType === 'ט"ו') return city === JERUSALEM;
       // All non-Jerusalem missions exclude Jerusalem donors
       if (city === JERUSALEM) return false;
@@ -105,7 +110,7 @@ export default function DonorMapping() {
       // ליל ט"ו: all non-Jerusalem unassigned donors
       return true;
     });
-  }, [donors, assignedDonorIds, taskType, mtaCities, yadCities]);
+  }, [donors, assignedDonorIds, taskType, mtaCities, yadCities, telephonesCity]);
 
   // Geocode donors
   useEffect(() => {
