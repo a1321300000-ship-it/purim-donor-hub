@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      auth_kiosk: {
+        Row: {
+          created_at: string
+          email: string
+          id: number
+          password: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: number
+          password: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: number
+          password?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       bachurim: {
         Row: {
           address: string

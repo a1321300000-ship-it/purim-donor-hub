@@ -1,52 +1,54 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-const STORAGE_KEY = "pin_authenticated";
-const DEFAULT_PIN = "9999";
-
 interface AuthContextType {
   authenticated: boolean;
   loading: boolean;
   signIn: (pin: string) => Promise<boolean>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   authenticated: false,
   loading: true,
   signIn: async () => false,
-  signOut: () => {},
+  signOut: async () => {},
 });
-
-async function fetchPin(): Promise<string> {
-  const { data } = await supabase.from("settings").select("value").eq("key", "access_pin").maybeSingle();
-  const v = (data?.value ?? null) as any;
-  if (typeof v === "string") return v;
-  if (v && typeof v === "object" && typeof v.pin === "string") return v.pin;
-  return DEFAULT_PIN;
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setAuthenticated(localStorage.getItem(STORAGE_KEY) === "1");
-    setLoading(false);
+    // Listen first, then read existing session
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthenticated(!!session);
+    });
+    supabase.auth.getSession().then(({ data }) => {
+      setAuthenticated(!!data.session);
+      setLoading(false);
+    });
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   const signIn = useCallback(async (pin: string) => {
-    const stored = await fetchPin();
-    if (pin === stored) {
-      localStorage.setItem(STORAGE_KEY, "1");
+    try {
+      const { data, error } = await supabase.functions.invoke("pin-login", { body: { pin } });
+      if (error || !data?.access_token || !data?.refresh_token) return false;
+      const { error: setErr } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+      if (setErr) return false;
       setAuthenticated(true);
       return true;
+    } catch {
+      return false;
     }
-    return false;
   }, []);
 
-  const signOut = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
     setAuthenticated(false);
   }, []);
 
