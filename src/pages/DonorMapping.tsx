@@ -169,8 +169,10 @@ export default function DonorMapping() {
       const donor = activeDonors.find((d) => d.id === donorId);
       if (!donor) return;
       const marker = L.marker(coords);
+      const esc = (s: string | null | undefined) =>
+        String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
       marker.bindPopup(
-        `<div dir="rtl" style="text-align:right"><b>${donor.full_name}</b><br/>${donor.address} ${donor.house_number}, ${donor.city}<br/>קומה: ${donor.floor || "—"}</div>`
+        `<div dir="rtl" style="text-align:right"><b>${esc(donor.full_name)}</b><br/>${esc(donor.address)} ${esc(donor.house_number)}, ${esc(donor.city)}<br/>קומה: ${esc(donor.floor) || "—"}</div>`
       );
       cluster.addLayer(marker);
     });
